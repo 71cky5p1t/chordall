@@ -1,36 +1,184 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Chordall
 
-## Getting Started
+A better chords-and-lyrics play-along web app. Search the web for the richest
+chord charts, play along with auto-scroll, transpose to your voice, see piano
+voicings for every chord, and build setlists that generate a bridge progression
+to glide seamlessly from one song into the next.
 
-First, run the development server:
+Built for pianists first (chord voicings render on a keyboard), but works for
+any instrument.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Status
+
+Working MVP:
+
+- **Search** across providers (Ultimate Guitar today; pluggable for more).
+- **Player** — chords laid over lyrics, section labels, transpose (± semitones
+  with live key readout), font size, auto-scroll with speed control, and a
+  piano-voicing popover on any chord.
+- **Phone-friendly wrapping** — UG stores chords on a separate line above the
+  lyrics; we merge the two so each chord sits over its word, then wrap the line
+  word-by-word so nothing runs off a narrow screen. Genuine ASCII tab/riffs are
+  detected by content and kept in a horizontally-scrolling monospace block
+  instead of wrapping.
+- **Version picker** — a dropdown of every transcription of the song (pulled from
+  UG's version list, ranked by rating × votes); switching reloads that version.
+  The current one is labelled `This version (vN)`.
+- **Playable scale keyboard** — the current key shows a two-octave keyboard with
+  every scale note highlighted and named; tap any key to hear the pitch (Web
+  Audio). In the player it sits in the header; in perform mode it's a sticky panel
+  toggled from the key badge.
+- **Browse the homepage** — "Your artists" chips (baked in from your listening
+  history — see `lib/artists.ts`), plus era/theme chips (Musicals, 50s–00s) that
+  Claude curates on click — with a hard "no true country" rule. Category browse
+  needs the Claude API key; artist chips are just searches and always work.
+- **Favourites** + **Suggest next** — heart songs; "Suggest next" picks the
+  smoothest-transition song from your favourites and shows the bridge.
+- **End-of-song transition** — when the current song is in a setlist, the bottom
+  shows the bridge into the next song, a "Next song →" button, and (optional)
+  auto-advance after a configurable delay.
+- **Perform mode** (`/perform`) — a full-screen runner that plays the setlist in
+  order: one song at a time (default transpose applied), the bridge into the next
+  song inline, prev/next + auto-advance, and an "end of set" screen. Tapping the
+  key badge floats a **sticky, playable keyboard** of the current scale (notes
+  highlighted + labelled; tap any key to hear it via Web Audio).
+- **Tap-to-scroll speed** — bottom-left `+ Speed`, bottom-right `− Speed`, and a
+  centre `↑ Back` that smoothly rewinds half a page (rAF animation, so it works
+  even where CSS smooth-scroll is a no-op).
+- **On-disk song cache** — fetched charts are cached under `.songcache/`, so a
+  song is never re-fetched from the provider.
+- **Settings** — text size, high-legibility font, default transpose (e.g. always
+  −3), auto-advance + delay, piano voicings.
+- **AI setlist by mood** — describe a mood ("cosy rainy Sunday") and Claude
+  curates a setlist; each song is resolved to a real chord chart with a bridge
+  between them. Requires a Claude API key (see below).
+
+## Enabling the AI setlist
+
+Create `.env.local` in the project root:
+
+```
+ANTHROPIC_API_KEY=sk-ant-...
+# optional — defaults to claude-opus-5; use a cheaper model if you like:
+# CHORDALL_AI_MODEL=claude-haiku-4-5
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Restart `npm run dev`. Without a key, everything else works and the generator
+shows a friendly "add your key" message.
+- **Rich chords** — we keep whatever the source provides (`F#m7`, `Esus4`,
+  `Cmaj7/E`, …), not just triads.
+- **Setlist + transitions** — add songs, reorder them, and between each pair we
+  detect both keys and generate a short connecting progression (pivot chord when
+  the keys share one, otherwise a V7 lean into the next key) with piano diagrams
+  and a plain-English explanation.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Not built yet (deliberately deferred — see "Roadmap"):
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Automatic **chord analysis from audio** when a song isn't found anywhere.
+- Additional scraper providers beyond Ultimate Guitar.
+- Saved/named setlists, accounts, mobile polish.
 
-## Learn More
+## Architecture
 
-To learn more about Next.js, take a look at the following resources:
+```
+app/
+  page.tsx              search UI
+  song/page.tsx         the player (reads ?provider&id&url)
+  setlist/page.tsx      setlist + transition cards
+  api/search/route.ts   aggregated provider search
+  api/song/route.ts     fetch one song -> parsed model + detected key
+lib/
+  music/chords.ts       chord parsing, transpose, piano voicings (pure)
+  music/key.ts          Krumhansl key detection + diatonic helpers
+  music/transition.ts   bridge-progression generator between two keys
+  chordpro/parse.ts     UG [ch] markup / ChordPro -> chords-over-lyrics model
+  providers/            provider abstraction + Ultimate Guitar scraper
+components/             ChordSheet, PianoChord, SetlistProvider, SiteHeader
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### How sourcing works (and its caveat)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Chord sites have no public API. The Ultimate Guitar provider fetches the page
+HTML and reads the JSON blob UG embeds in `<div class="js-store" data-content>`
+rather than screen-scraping the DOM — much more stable, but still a scrape: if
+UG changes their markup, `lib/providers/ultimate-guitar.ts` is the one place to
+fix. Providers are isolated and searched with `Promise.allSettled`, so one
+breaking never takes down the app. This is a ToS gray area; it's here because it
+was an explicit product requirement.
 
-## Deploy on Vercel
+## Develop
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npm run dev     # http://localhost:3000
+npm run build   # production build + typecheck
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Deploy (Docker + Saltbox / Traefik)
+
+Chordall builds to a self-contained Next.js standalone server and ships as a
+small Docker image (`node:24-alpine`).
+
+**Prerequisites**
+
+- A working Saltbox stack with Traefik on the external `saltbox` Docker network,
+  entrypoints `web`/`websecure`, and the `cfdns` cert resolver (the defaults).
+- A DNS record for your chosen hostname pointing at the server (Cloudflare).
+
+GitHub Actions builds and publishes the image to
+`ghcr.io/71cky5p1t/chordall:latest` on every push to `main`, so the server just
+pulls it — no source needed on the box.
+
+**Steps**
+
+1. On the server, create a folder and drop in `docker-compose.yml` + a `.env`:
+
+   ```bash
+   mkdir -p /opt/chordall && cd /opt/chordall
+   # copy docker-compose.yml here, then:
+   cp .env.example .env   # or create .env by hand
+   # set CHORDALL_HOST=chordall.yourdomain.com
+   # set ANTHROPIC_API_KEY=... (optional, for AI features)
+   ```
+
+2. Pull and start:
+
+   ```bash
+   docker compose up -d
+   ```
+
+Traefik picks it up from the labels and serves it at `https://$CHORDALL_HOST`.
+Update later with `docker compose pull && docker compose up -d`.
+
+> **One-time:** the GHCR package is created private on the first workflow run.
+> Make it public (repo → Packages → chordall → Package settings → Change
+> visibility) so the server can pull without a login — or, to keep it private,
+> `echo $TOKEN | docker login ghcr.io -u <user> --password-stdin` on the server
+> with a PAT that has `read:packages`.
+
+To build locally from source instead, edit `docker-compose.yml` to use `build:`
+and run `docker compose up -d --build`.
+
+**Volumes & data**
+
+- `chordall-cache` (named volume) — persists fetched chord charts so songs aren't
+  re-fetched. That's the only state; there's no database.
+
+**Notes**
+
+- The Traefik middleware names in `docker-compose.yml`
+  (`redirect-to-https@docker`, `cloudflarewarp@docker`, `gzip@docker`,
+  `*Headers@file`, `securetls@file`) are the Saltbox defaults — adjust them if
+  your Traefik dynamic config names them differently.
+- Not on Saltbox? Drop the labels and the `saltbox` network, add
+  `ports: ["3000:3000"]`, and put it behind whatever reverse proxy you use.
+- Update later with `git pull && docker compose up -d --build`.
+
+## Roadmap
+
+1. Persist search results across back-navigation; saved/named setlists.
+2. More providers (e-chords, Chordie, ChordPro repos) behind the same interface.
+3. Audio chord-analysis fallback: a Python microservice (librosa/madmom/chordino)
+   that estimates chords when no chart exists — approximate, best for a starting
+   point you refine.
+4. Playback sync (tap-tempo or audio beat tracking) so auto-scroll tracks the
+   real song, not just a constant speed.

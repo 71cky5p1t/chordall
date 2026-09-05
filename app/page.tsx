@@ -1,69 +1,227 @@
-import Image from "next/image";
+"use client";
+
+import { useState, useCallback, type FormEvent } from "react";
+import Link from "next/link";
+import type { SearchResult } from "@/lib/providers/types";
+import { FAVOURITE_ARTISTS } from "@/lib/artists";
+
+function songHref(r: { provider: string; id: string; url: string; title: string; artist: string }) {
+  const p = new URLSearchParams({
+    provider: r.provider,
+    id: r.id,
+    url: r.url,
+    title: r.title,
+    artist: r.artist,
+  });
+  return `/song?${p.toString()}`;
+}
+
+const CATEGORIES: { id: string; label: string }[] = [
+  { id: "musicals", label: "Musicals" },
+  { id: "1950s", label: "50s" },
+  { id: "1960s", label: "60s" },
+  { id: "1970s", label: "70s" },
+  { id: "1980s", label: "80s" },
+  { id: "1990s", label: "90s" },
+  { id: "2000s", label: "00s" },
+];
+
+type Row = SearchResult | { provider: string; id: string; url: string; title: string; artist: string };
 
 export default function Home() {
+  const [q, setQ] = useState("");
+  const [results, setResults] = useState<Row[] | null>(null);
+  const [label, setLabel] = useState<string | null>(null);
+  const [errors, setErrors] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [busyCat, setBusyCat] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  const runSearch = useCallback(async (query: string) => {
+    if (!query.trim()) return;
+    setLoading(true);
+    setErr(null);
+    setResults(null);
+    setBusyCat(null);
+    setLabel(`Results for “${query.trim()}”`);
+    try {
+      const res = await fetch(`/api/search?q=${encodeURIComponent(query.trim())}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "search failed");
+      setResults(data.results);
+      setErrors(data.errors ?? []);
+    } catch (e) {
+      setErr(String(e instanceof Error ? e.message : e));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const onSearch = (e: FormEvent) => {
+    e.preventDefault();
+    runSearch(q);
+  };
+
+  const onArtist = (name: string) => {
+    setQ(name);
+    runSearch(name);
+  };
+
+  const onCategory = async (id: string, catLabel: string) => {
+    setBusyCat(id);
+    setErr(null);
+    setResults(null);
+    setLoading(false);
+    setLabel(`${catLabel} picks`);
+    try {
+      const res = await fetch(`/api/browse?category=${encodeURIComponent(id)}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "couldn’t load category");
+      setResults(data.items);
+      setErrors([]);
+    } catch (e) {
+      setErr(String(e instanceof Error ? e.message : e));
+      setLabel(null);
+    } finally {
+      setBusyCat(null);
+    }
+  };
+
+  const showBrowse = !results && !loading && !busyCat;
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
+    <main className="mx-auto max-w-5xl px-4 py-10">
+      {showBrowse && (
+        <div className="mb-8 text-center">
+          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+            Chords & lyrics that <span className="text-accent">follow along</span>
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="mx-auto mt-3 max-w-xl text-text-dim">
+            Search across the web for the richest chords, play along with
+            auto-scroll, transpose to your voice, and build a setlist with
+            seamless transitions between songs.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      )}
+
+      <form onSubmit={onSearch} className="mx-auto flex max-w-xl gap-2">
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Search a song or artist…"
+          autoFocus
+          className="flex-1 rounded-xl border border-border bg-bg-elev px-4 py-3 text-base outline-none placeholder:text-text-faint focus:border-accent"
+        />
+        <button
+          type="submit"
+          disabled={loading}
+          className="rounded-xl bg-accent px-5 py-3 font-semibold text-bg transition hover:brightness-110 disabled:opacity-60"
+        >
+          {loading ? "…" : "Search"}
+        </button>
+      </form>
+
+      {err && (
+        <p className="mx-auto mt-4 max-w-xl rounded-lg border border-danger/40 bg-danger/10 px-4 py-2 text-sm text-danger">
+          {err}
+        </p>
+      )}
+
+      {/* Browse */}
+      {showBrowse && (
+        <div className="mx-auto mt-10 max-w-2xl space-y-6">
+          <section>
+            <h2 className="mb-2 text-sm font-semibold text-text-dim">Your artists</h2>
+            <div className="flex flex-wrap gap-2">
+              {FAVOURITE_ARTISTS.map((name) => (
+                <button
+                  key={name}
+                  onClick={() => onArtist(name)}
+                  className="rounded-full border border-border bg-bg-elev px-3 py-1.5 text-sm text-text transition hover:border-accent hover:text-accent"
+                >
+                  {name}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1.5 text-[11px] text-text-faint">Scoped from your listening history.</p>
+          </section>
+
+          <section>
+            <h2 className="mb-2 text-sm font-semibold text-text-dim">Browse by era & theme</h2>
+            <div className="flex flex-wrap gap-2">
+              {CATEGORIES.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => onCategory(c.id, c.label)}
+                  className="rounded-full border border-accent-2/40 bg-accent-2/5 px-4 py-1.5 text-sm font-medium text-accent-2 transition hover:bg-accent-2 hover:text-bg"
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1.5 text-[11px] text-text-faint">Curated by Claude — no country, promise.</p>
+          </section>
         </div>
-      </main>
-    </div>
+      )}
+
+      {(loading || busyCat) && (
+        <p className="mt-10 text-center text-text-dim">
+          {busyCat ? "Curating songs…" : "Searching the web…"}
+        </p>
+      )}
+
+      {results && (
+        <div className="mx-auto mt-8 max-w-2xl">
+          <div className="mb-3 flex items-center justify-between">
+            {label && <h2 className="text-sm font-semibold text-text-dim">{label}</h2>}
+            <button
+              onClick={() => {
+                setResults(null);
+                setLabel(null);
+                setErr(null);
+              }}
+              className="text-xs text-text-faint underline hover:text-text"
+            >
+              ← browse
+            </button>
+          </div>
+          {results.length === 0 ? (
+            <p className="text-center text-text-dim">No results. Try another spelling.</p>
+          ) : (
+            <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border">
+              {results.map((r, i) => (
+                <li key={`${r.provider}-${r.id}-${i}`}>
+                  <Link
+                    href={songHref(r)}
+                    className="flex items-center gap-3 bg-bg-elev px-4 py-3 transition hover:bg-bg-elev-2"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate font-medium">{r.title}</div>
+                      <div className="truncate text-sm text-text-dim">{r.artist}</div>
+                    </div>
+                    {"type" in r && r.type && (
+                      <span className="shrink-0 rounded-full border border-border-strong px-2 py-0.5 text-xs text-text-dim">
+                        {r.type}
+                      </span>
+                    )}
+                    {"rating" in r && typeof r.rating === "number" && (
+                      <span className="shrink-0 text-xs text-text-faint tabular-nums">
+                        ★ {r.rating.toFixed(1)}
+                        {"votes" in r && r.votes ? ` · ${r.votes}` : ""}
+                      </span>
+                    )}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+          {errors.length > 0 && (
+            <p className="mt-4 text-center text-xs text-text-faint">
+              Some sources didn’t respond: {errors.join(" · ")}
+            </p>
+          )}
+        </div>
+      )}
+    </main>
   );
 }

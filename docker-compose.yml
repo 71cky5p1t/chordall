@@ -1,0 +1,51 @@
+services:
+  chordall:
+    # Prebuilt image published by GitHub Actions (public — no login needed).
+    # Update with: docker compose pull && docker compose up -d
+    image: ghcr.io/71cky5p1t/chordall:latest
+    # To build locally from source instead, comment out `image:` above and use:
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
+    container_name: chordall
+    restart: unless-stopped
+    environment:
+      # --- AI features (setlist-by-mood, era/theme browse). Optional; without a
+      #     key those features show a friendly "add your key" message. ---
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - CHORDALL_AI_MODEL=${CHORDALL_AI_MODEL:-claude-opus-5}
+      # --- Where fetched chord charts are cached (mounted volume below) ---
+      - CHORDALL_CACHE_DIR=/app/.songcache
+    volumes:
+      # Persist the song cache across restarts.
+      - chordall-cache:/app/.songcache
+    networks:
+      - saltbox
+    labels:
+      com.github.saltbox.saltbox_managed: "true"
+      traefik.enable: "true"
+      traefik.docker.network: "saltbox"
+
+      # HTTP -> HTTPS redirect
+      traefik.http.routers.chordall-http.entrypoints: "web"
+      traefik.http.routers.chordall-http.rule: "Host(`${CHORDALL_HOST}`)"
+      traefik.http.routers.chordall-http.middlewares: "globalHeaders@file,redirect-to-https@docker,robotHeaders@file,cloudflarewarp@docker,gzip@docker"
+      traefik.http.routers.chordall-http.service: "chordall"
+
+      # HTTPS
+      traefik.http.routers.chordall.entrypoints: "websecure"
+      traefik.http.routers.chordall.rule: "Host(`${CHORDALL_HOST}`)"
+      traefik.http.routers.chordall.middlewares: "globalHeaders@file,secureHeaders@file,robotHeaders@file,cloudflarewarp@docker,gzip@docker"
+      traefik.http.routers.chordall.service: "chordall"
+      traefik.http.routers.chordall.tls.certresolver: "cfdns"
+      traefik.http.routers.chordall.tls.options: "securetls@file"
+
+      # The app listens on 3000 inside the container.
+      traefik.http.services.chordall.loadbalancer.server.port: "3000"
+
+volumes:
+  chordall-cache:
+
+networks:
+  saltbox:
+    external: true

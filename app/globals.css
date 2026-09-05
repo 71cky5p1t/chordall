@@ -1,26 +1,93 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #0c0d12;
+  --bg-elev: #14161f;
+  --bg-elev-2: #1c1f2b;
+  --border: #262a38;
+  --border-strong: #363c50;
+  --text: #eceef4;
+  --text-dim: #9aa1b3;
+  --text-faint: #656c80;
+  --accent: #ffb454;         /* warm amber — the chord color */
+  --accent-2: #7c9cff;       /* cool blue — accents/links */
+  --accent-3: #55d6a0;       /* green — transitions/success */
+  --danger: #ff6b6b;
+  --chord: #ffb454;
+  --piano-active: #ffb454;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg: var(--bg);
+  --color-bg-elev: var(--bg-elev);
+  --color-bg-elev-2: var(--bg-elev-2);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-text: var(--text);
+  --color-text-dim: var(--text-dim);
+  --color-text-faint: var(--text-faint);
+  --color-accent: var(--accent);
+  --color-accent-2: var(--accent-2);
+  --color-accent-3: var(--accent-3);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+html { color-scheme: dark; }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
 }
+
+/* Chord-sheet layout: chords sit above lyrics. Lines wrap word-by-word so the
+   sheet stays readable on a phone, while each chord stays pinned to its word. */
+.sheet {
+  font-family: var(--font-mono);
+  line-height: 1.15;
+}
+.sheet .line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+.sheet .cell {
+  display: inline-flex;
+  flex-direction: column;
+  vertical-align: bottom;
+}
+.sheet .cell .chord {
+  color: var(--chord);
+  font-weight: 800;
+  font-size: 1.08em;      /* chords a touch bigger than the lyrics */
+  height: 1.45em;
+  line-height: 1.45em;
+  white-space: pre;
+  cursor: pointer;
+  user-select: none;
+  padding-right: 0.7ch;   /* keep adjacent chords from mashing together */
+}
+.sheet .cell .chord:empty { padding-right: 0; }
+.sheet .cell .chord:hover { text-decoration: underline; text-underline-offset: 3px; }
+.sheet .cell .lyric { white-space: pre; }
+
+/* High-legibility mode: extra tracking so D / B / G / 8 read clearly. */
+.sheet.legible { letter-spacing: 0.03em; }
+.sheet.legible .cell .chord { letter-spacing: 0.04em; }
+
+/* Tablature / ASCII riffs must keep fixed spacing — scroll instead of wrap. */
+.sheet .tab-line {
+  color: var(--text-dim);
+  white-space: pre;
+  overflow-x: auto;
+  max-width: 100%;
+}
+.sheet .tab-line .chord { color: var(--chord); font-weight: 700; }
+
+/* thin scrollbars */
+* { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+
+@keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.fadein { animation: fadein 0.18s ease-out; }

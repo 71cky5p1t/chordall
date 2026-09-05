@@ -1,0 +1,11 @@
+node_modules
+.next
+.git
+.songcache
+npm-debug.log*
+.env*
+README.md
+Dockerfile
+.dockerignore
+docker-compose.yml
+.DS_Store
