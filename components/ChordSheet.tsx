@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { ParsedSong, Segment } from "@/lib/chordpro/parse";
 import { transposeChord } from "@/lib/music/chords";
-import { PianoChord } from "./PianoChord";
+import { ChordDiagram } from "./ChordDiagram";
 
 interface Props {
   song: ParsedSong;
@@ -99,7 +99,7 @@ export function ChordSheet({ song, semitones, preferFlat, fontSize, showPiano, l
                           <span className="mb-1 block font-sans text-xs font-semibold text-accent">
                             {chord}
                           </span>
-                          <PianoChord chord={chord} preferFlat={preferFlat} />
+                          <ChordDiagram chord={chord} preferFlat={preferFlat} />
                         </span>
                       )}
                     </span>

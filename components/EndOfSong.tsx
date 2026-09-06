@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Transition } from "@/lib/music/transition";
 import type { SetlistItem } from "@/lib/setlist-types";
-import { PianoChord } from "./PianoChord";
+import { ChordDiagram } from "./ChordDiagram";
 
 /**
  * Bottom-of-song panel: shows the bridge into the next song, a Next button, and
@@ -70,7 +70,7 @@ export function EndOfSong({
             >
               {s.chord}
             </span>
-            <PianoChord chord={s.chord} />
+            <ChordDiagram chord={s.chord} />
             <span className="max-w-[9rem] text-[10px] leading-tight text-text-faint">{s.role}</span>
           </div>
         ))}

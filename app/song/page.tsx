@@ -78,7 +78,7 @@ function Player() {
   const fallbackTitle = sp.get("title") ?? "";
   const fallbackArtist = sp.get("artist") ?? "";
 
-  const { settings } = useSettings();
+  const { settings, update } = useSettings();
   const { add, has, items: setlistItems } = useSetlist();
   const { toggle: toggleFav, isFavourite, favourites } = useFavourites();
   const router = useRouter();
@@ -240,6 +240,14 @@ function Player() {
           </Control>
 
           <button
+            onClick={() => update({ instrument: settings.instrument === "guitar" ? "piano" : "guitar" })}
+            title={`Chord diagrams: ${settings.instrument === "guitar" ? "guitar" : "piano"} — tap to switch`}
+            className="rounded-lg bg-bg-elev-2 px-2.5 py-1.5 hover:bg-bg-elev"
+          >
+            {settings.instrument === "guitar" ? "🎸" : "🎹"}
+          </button>
+
+          <button
             onClick={() => setPlaying((p) => !p)}
             className={`rounded-lg px-3 py-1.5 font-medium transition ${
               playing ? "bg-accent text-bg" : "bg-bg-elev-2 text-text hover:bg-bg-elev"
@@ -339,8 +347,8 @@ function Player() {
             </div>
           )}
 
-          {/* Playable scale keyboard for the current key */}
-          {keyInfo && (
+          {/* Playable scale keyboard for the current key (piano mode only) */}
+          {keyInfo && settings.instrument === "piano" && (
             <div className="mt-3 inline-flex max-w-full flex-col gap-1 rounded-xl border border-border bg-bg-elev p-3">
               <span className="text-xs text-text-faint">
                 Scale of <span className="font-semibold text-accent">{keyInfo.label}</span>{" "}

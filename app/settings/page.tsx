@@ -11,6 +11,30 @@ export default function SettingsPage() {
 
       <div className="space-y-6">
         <Row
+          title="Instrument"
+          desc="Show chords as piano keys, or guitar fingering diagrams (Jye mode)."
+        >
+          <div className="flex overflow-hidden rounded-lg border border-border">
+            <button
+              onClick={() => update({ instrument: "piano" })}
+              className={`px-3 py-1.5 text-sm font-medium transition ${
+                settings.instrument === "piano" ? "bg-accent text-bg" : "text-text-dim hover:bg-bg-elev"
+              }`}
+            >
+              🎹 Piano
+            </button>
+            <button
+              onClick={() => update({ instrument: "guitar" })}
+              className={`px-3 py-1.5 text-sm font-medium transition ${
+                settings.instrument === "guitar" ? "bg-accent text-bg" : "text-text-dim hover:bg-bg-elev"
+              }`}
+            >
+              🎸 Jye
+            </button>
+          </div>
+        </Row>
+
+        <Row
           title="Text size"
           desc="Overall size of the chord sheet. Bump it up if you play without glasses."
         >
@@ -86,8 +110,8 @@ export default function SettingsPage() {
         )}
 
         <Row
-          title="Piano voicings"
-          desc="Show chords on a keyboard when tapped. On by default — this app is piano-first."
+          title="Chord diagrams"
+          desc="Show a chord's shape (piano keys or guitar fingering) when you tap it."
         >
           <Toggle on={settings.pianoVoicings} onChange={(v) => update({ pianoVoicings: v })} />
         </Row>

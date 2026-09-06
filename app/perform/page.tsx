@@ -23,7 +23,7 @@ interface SongResponse {
 
 export default function PerformPage() {
   const { items } = useSetlist();
-  const { settings } = useSettings();
+  const { settings, update } = useSettings();
 
   const [idx, setIdx] = useState(0);
   const [data, setData] = useState<SongResponse | null>(null);
@@ -135,14 +135,14 @@ export default function PerformPage() {
             <span className="text-text-dim"> — {current?.artist}</span>
           </div>
           <button
-            onClick={() => setShowKeys((s) => !s)}
+            onClick={() => settings.instrument === "piano" && setShowKeys((s) => !s)}
             disabled={!keyInfo}
-            title="Show a playable keyboard for this key"
+            title={settings.instrument === "piano" ? "Show a playable keyboard for this key" : "Key"}
             className={`rounded-lg border px-2.5 py-1 font-mono font-semibold tabular-nums transition disabled:opacity-40 ${
-              showKeys ? "border-accent bg-accent text-bg" : "border-accent/50 text-accent hover:bg-accent/10"
+              showKeys && settings.instrument === "piano" ? "border-accent bg-accent text-bg" : "border-accent/50 text-accent hover:bg-accent/10"
             }`}
           >
-            {keyInfo?.label ?? "—"} ⌨
+            {keyInfo?.label ?? "—"}{settings.instrument === "piano" ? " ⌨" : ""}
           </button>
         </div>
         <div className="mx-auto flex max-w-4xl flex-wrap items-center gap-x-4 gap-y-2 px-4 pb-2 text-sm">
@@ -153,6 +153,13 @@ export default function PerformPage() {
           <Stepper label="Transpose" onDown={() => setSemitones((s) => s - 1)} onUp={() => setSemitones((s) => s + 1)} value={semitones > 0 ? `+${semitones}` : String(semitones)} />
           <Stepper label="Text" onDown={() => setTextNudge((f) => f - 1)} onUp={() => setTextNudge((f) => f + 1)} value={String(fontSize)} />
           <button
+            onClick={() => update({ instrument: settings.instrument === "guitar" ? "piano" : "guitar" })}
+            title={`Chord diagrams: ${settings.instrument} — tap to switch`}
+            className="rounded-lg bg-bg-elev-2 px-2.5 py-1.5 hover:bg-bg-elev"
+          >
+            {settings.instrument === "guitar" ? "🎸" : "🎹"}
+          </button>
+          <button
             onClick={() => setPlaying((p) => !p)}
             className={`rounded-lg px-3 py-1.5 font-medium transition ${playing ? "bg-accent text-bg" : "bg-bg-elev-2 hover:bg-bg-elev"}`}
           >
@@ -161,7 +168,7 @@ export default function PerformPage() {
           <input type="range" min={8} max={90} value={speed} onChange={(e) => setSpeed(Number(e.target.value))} className="w-24 accent-accent" />
         </div>
 
-        {showKeys && keyInfo && (
+        {showKeys && keyInfo && settings.instrument === "piano" && (
           <div className="border-t border-border bg-bg-elev/60 px-4 py-2">
             <div className="mx-auto flex max-w-4xl items-center gap-3">
               <span className="shrink-0 text-xs text-text-faint">

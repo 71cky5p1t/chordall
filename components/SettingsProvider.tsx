@@ -8,16 +8,20 @@ import {
   type ReactNode,
 } from "react";
 
+export type Instrument = "piano" | "guitar";
+
 export interface Settings {
+  instrument: Instrument; // piano keys vs guitar fingering ("Jye mode")
   fontScale: number; // multiplies the sheet base size
   legibleFont: boolean; // high-legibility font + extra spacing so D/B/G are distinct
   autoAdvance: boolean; // auto-move to next song at the end
   autoAdvanceSeconds: number;
   defaultTranspose: number; // auto-applied semitone shift on load (e.g. -3)
-  pianoVoicings: boolean; // show piano voicings (always on for this user)
+  pianoVoicings: boolean; // show chord diagrams when tapped
 }
 
 const DEFAULTS: Settings = {
+  instrument: "piano",
   fontScale: 1.15,
   legibleFont: true,
   autoAdvance: false,

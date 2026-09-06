@@ -8,7 +8,7 @@ import { transitionBetweenSongs } from "@/lib/music/transition";
 import { transposeChord } from "@/lib/music/chords";
 import { noteName, flatKey } from "@/lib/music/key";
 import type { SetlistItem } from "@/lib/setlist-types";
-import { PianoChord } from "@/components/PianoChord";
+import { ChordDiagram } from "@/components/ChordDiagram";
 
 function songHref(it: SetlistItem) {
   const p = new URLSearchParams({
@@ -198,7 +198,7 @@ export default function SetlistPage() {
                           >
                             {s.chord}
                           </span>
-                          <PianoChord chord={s.chord} />
+                          <ChordDiagram chord={s.chord} />
                           <span className="max-w-[8rem] text-[10px] leading-tight text-text-faint">
                             {s.role}
                           </span>
