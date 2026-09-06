@@ -46,6 +46,7 @@ function extractJsonArray(text: string): Suggestion[] {
 
 export async function GET(req: NextRequest) {
   const category = req.nextUrl.searchParams.get("category") ?? "";
+  const allowCountry = req.nextUrl.searchParams.get("allowCountry") === "1";
   const desc = CATEGORIES[category];
   if (!desc) return NextResponse.json({ error: "unknown category" }, { status: 400 });
 
@@ -66,7 +67,7 @@ export async function GET(req: NextRequest) {
       system:
         "You are a music curator for a pianist/guitarist. Suggest real, famous songs " +
         "that are easy to find chord charts for. " +
-        NO_COUNTRY +
+        (allowCountry ? "Any genre is welcome, country included. " : NO_COUNTRY) +
         ' Respond with ONLY a JSON array like [{"title":"Song","artist":"Artist"}], no prose.',
       messages: [
         { role: "user", content: `Suggest 12 ${desc}. Variety of artists. Return only the JSON array.` },

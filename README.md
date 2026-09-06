@@ -24,9 +24,12 @@ Working MVP:
 - **Version picker** — a dropdown of every transcription of the song (pulled from
   UG's version list, ranked by rating × votes); switching reloads that version.
   The current one is labelled `This version (vN)`.
-- **Piano or Jye (guitar) mode** — a Settings toggle (and a quick 🎹/🎸 button in
-  the player + perform bars) switches chord diagrams between piano voicings and
-  real guitar fingering shapes (from `@tombatossals/chords-db`, lazy-loaded).
+- **Piano or Jye (guitar) mode** — a front-page selector, a Settings toggle, and a
+  quick 🎹/🎸 button in the player + perform bars all switch chord diagrams between
+  piano voicings and real guitar fingering shapes (from `@tombatossals/chords-db`,
+  lazy-loaded). Jye mode also swaps the homepage's suggested artists to a
+  guitar-friendly set (`JYE_ARTISTS`) and lets country into the era/theme browse;
+  Piano mode shows your listening-history artists and keeps country out.
 - **Playable scale keyboard** (piano mode) — the current key shows a two-octave
   keyboard with every scale note highlighted and named; tap any key to hear the
   pitch (Web Audio). In the player it sits in the header; in perform mode it's a

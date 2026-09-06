@@ -3,7 +3,8 @@
 import { useState, useCallback, type FormEvent } from "react";
 import Link from "next/link";
 import type { SearchResult } from "@/lib/providers/types";
-import { FAVOURITE_ARTISTS } from "@/lib/artists";
+import { FAVOURITE_ARTISTS, JYE_ARTISTS } from "@/lib/artists";
+import { useSettings } from "@/components/SettingsProvider";
 
 function songHref(r: { provider: string; id: string; url: string; title: string; artist: string }) {
   const p = new URLSearchParams({
@@ -36,6 +37,9 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [busyCat, setBusyCat] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const { settings, update } = useSettings();
+  const isJye = settings.instrument === "guitar";
+  const artistList = isJye ? JYE_ARTISTS : FAVOURITE_ARTISTS;
 
   const runSearch = useCallback(async (query: string) => {
     if (!query.trim()) return;
@@ -74,7 +78,9 @@ export default function Home() {
     setLoading(false);
     setLabel(`${catLabel} picks`);
     try {
-      const res = await fetch(`/api/browse?category=${encodeURIComponent(id)}`);
+      const res = await fetch(
+        `/api/browse?category=${encodeURIComponent(id)}${isJye ? "&allowCountry=1" : ""}`,
+      );
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "couldn’t load category");
       setResults(data.items);
@@ -121,6 +127,29 @@ export default function Home() {
         </button>
       </form>
 
+      {/* Front-page instrument selector */}
+      <div className="mx-auto mt-4 flex max-w-xl items-center justify-center gap-2 text-sm">
+        <span className="text-text-faint">Mode</span>
+        <div className="flex overflow-hidden rounded-lg border border-border">
+          <button
+            onClick={() => update({ instrument: "piano" })}
+            className={`px-3 py-1.5 font-medium transition ${
+              !isJye ? "bg-accent text-bg" : "text-text-dim hover:bg-bg-elev"
+            }`}
+          >
+            🎹 Piano
+          </button>
+          <button
+            onClick={() => update({ instrument: "guitar" })}
+            className={`px-3 py-1.5 font-medium transition ${
+              isJye ? "bg-accent text-bg" : "text-text-dim hover:bg-bg-elev"
+            }`}
+          >
+            🎸 Jye
+          </button>
+        </div>
+      </div>
+
       {err && (
         <p className="mx-auto mt-4 max-w-xl rounded-lg border border-danger/40 bg-danger/10 px-4 py-2 text-sm text-danger">
           {err}
@@ -131,9 +160,11 @@ export default function Home() {
       {showBrowse && (
         <div className="mx-auto mt-10 max-w-2xl space-y-6">
           <section>
-            <h2 className="mb-2 text-sm font-semibold text-text-dim">Your artists</h2>
+            <h2 className="mb-2 text-sm font-semibold text-text-dim">
+              {isJye ? "Jye’s artists" : "Your artists"}
+            </h2>
             <div className="flex flex-wrap gap-2">
-              {FAVOURITE_ARTISTS.map((name) => (
+              {artistList.map((name) => (
                 <button
                   key={name}
                   onClick={() => onArtist(name)}
@@ -143,7 +174,9 @@ export default function Home() {
                 </button>
               ))}
             </div>
-            <p className="mt-1.5 text-[11px] text-text-faint">Scoped from your listening history.</p>
+            <p className="mt-1.5 text-[11px] text-text-faint">
+              {isJye ? "Guitar-friendly picks for Jye." : "Scoped from your listening history."}
+            </p>
           </section>
 
           <section>
@@ -159,7 +192,9 @@ export default function Home() {
                 </button>
               ))}
             </div>
-            <p className="mt-1.5 text-[11px] text-text-faint">Curated by Claude — no country, promise.</p>
+            <p className="mt-1.5 text-[11px] text-text-faint">
+              {isJye ? "Curated by Claude — country welcome in Jye mode." : "Curated by Claude — no country, promise."}
+            </p>
           </section>
         </div>
       )}

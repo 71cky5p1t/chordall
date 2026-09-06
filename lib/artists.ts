@@ -27,3 +27,29 @@ export const FAVOURITE_ARTISTS: string[] = [
   "Lorde",
   "Flume",
 ];
+
+// Jye's picks (guitar mode) — his stated taste (modern country + 80s soft rock)
+// plus guitar-friendly singalong staples. Country is welcome here, unlike the
+// era/theme browse.
+export const JYE_ARTISTS: string[] = [
+  "Morgan Wallen",
+  "Kane Brown",
+  "Coldplay",
+  "Fleetwood Mac",
+  "Phil Collins",
+  "Zach Bryan",
+  "Luke Combs",
+  "Chris Stapleton",
+  "Eagles",
+  "Tom Petty",
+  "Dire Straits",
+  "Bryan Adams",
+  "Journey",
+  "Genesis",
+  "Toto",
+  "Ed Sheeran",
+  "John Mayer",
+  "Oasis",
+  "Noah Kahan",
+  "Mumford & Sons",
+];
