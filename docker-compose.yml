@@ -53,6 +53,10 @@ services:
     image: containrrr/watchtower
     container_name: chordall-watchtower
     restart: unless-stopped
+    environment:
+      # The containrrr image defaults to Docker API 1.25, which modern daemons
+      # reject ("client version too old"). Pin a supported version.
+      - DOCKER_API_VERSION=1.41
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     command: --label-enable --cleanup --interval 300
