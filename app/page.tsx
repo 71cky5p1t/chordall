@@ -137,7 +137,7 @@ export default function Home() {
               !isJye ? "bg-accent text-bg" : "text-text-dim hover:bg-bg-elev"
             }`}
           >
-            🎹 Piano
+            🎹 Juncle
           </button>
           <button
             onClick={() => update({ instrument: "guitar" })}
@@ -161,7 +161,7 @@ export default function Home() {
         <div className="mx-auto mt-10 max-w-2xl space-y-6">
           <section>
             <h2 className="mb-2 text-sm font-semibold text-text-dim">
-              {isJye ? "Jye’s artists" : "Your artists"}
+              {isJye ? "Jye’s artists" : "Juncle’s artists"}
             </h2>
             <div className="flex flex-wrap gap-2">
               {artistList.map((name) => (
@@ -175,7 +175,7 @@ export default function Home() {
               ))}
             </div>
             <p className="mt-1.5 text-[11px] text-text-faint">
-              {isJye ? "Guitar-friendly picks for Jye." : "Scoped from your listening history."}
+              {isJye ? "Guitar-friendly picks for Jye." : "Scoped from Juncle’s listening history."}
             </p>
           </section>
 

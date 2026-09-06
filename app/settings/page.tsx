@@ -12,7 +12,7 @@ export default function SettingsPage() {
       <div className="space-y-6">
         <Row
           title="Instrument"
-          desc="Show chords as piano keys, or guitar fingering diagrams (Jye mode)."
+          desc="Juncle = piano keys. Jye = guitar fingering diagrams."
         >
           <div className="flex overflow-hidden rounded-lg border border-border">
             <button
@@ -21,7 +21,7 @@ export default function SettingsPage() {
                 settings.instrument === "piano" ? "bg-accent text-bg" : "text-text-dim hover:bg-bg-elev"
               }`}
             >
-              🎹 Piano
+              🎹 Juncle
             </button>
             <button
               onClick={() => update({ instrument: "guitar" })}
