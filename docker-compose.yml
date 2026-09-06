@@ -23,6 +23,8 @@ services:
       - saltbox
     labels:
       com.github.saltbox.saltbox_managed: "true"
+      # Let the bundled Watchtower auto-update just this container.
+      com.centurylinklabs.watchtower.enable: "true"
       traefik.enable: "true"
       traefik.docker.network: "saltbox"
 
@@ -42,6 +44,18 @@ services:
 
       # The app listens on 3000 inside the container.
       traefik.http.services.chordall.loadbalancer.server.port: "3000"
+
+  # Auto-updates Chordall: polls GHCR every 5 min, pulls a newer :latest image,
+  # recreates the container, and cleans up the old image. `--label-enable` scopes
+  # it to containers labelled watchtower.enable=true (i.e. only Chordall), so it
+  # never touches Radarr or anything else on the box.
+  watchtower:
+    image: containrrr/watchtower
+    container_name: chordall-watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --label-enable --cleanup --interval 300
 
 volumes:
   chordall-cache:

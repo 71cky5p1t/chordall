@@ -147,7 +147,13 @@ pulls it — no source needed on the box.
    ```
 
 Traefik picks it up from the labels and serves it at `https://$CHORDALL_HOST`.
-Update later with `docker compose pull && docker compose up -d`.
+
+**Auto-updates:** the compose includes a bundled Watchtower (`chordall-watchtower`)
+that polls GHCR every 5 minutes and, when CI publishes a newer `:latest`, pulls it,
+recreates the container, and prunes the old image. It's scoped by
+`--label-enable` to the `watchtower.enable=true` label — so it only ever updates
+Chordall, never Radarr or anything else on the box. To update by hand instead,
+`docker compose pull && docker compose up -d`.
 
 > **One-time:** the GHCR package is created private on the first workflow run.
 > Make it public (repo → Packages → chordall → Package settings → Change
