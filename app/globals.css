@@ -91,3 +91,40 @@ body {
 
 @keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 .fadein { animation: fadein 0.18s ease-out; }
+
+/* ✨ Jazzify sparkle burst (see lib/sparkle.ts) */
+.sparkle-layer { position: fixed; inset: 0; pointer-events: none; z-index: 60; }
+.sparkle {
+  position: fixed;
+  transform: translate(-50%, -50%);
+  font-size: var(--size, 12px);
+  line-height: 1;
+  color: hsl(var(--hue, 40) 95% 72%);
+  text-shadow: 0 0 6px hsl(var(--hue, 40) 95% 72%), 0 0 14px hsl(var(--hue, 40) 90% 60%);
+  animation: sparkle-fly 950ms cubic-bezier(0.2, 0.8, 0.2, 1) var(--delay, 0ms) both;
+}
+@keyframes sparkle-fly {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.3) rotate(0deg); }
+  15%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1.15) rotate(180deg); }
+}
+
+/* Chords glow for a beat when Jazzify flips, so the change reads as "magic". */
+.sheet-shimmer .sheet .chord { animation: chord-shimmer 900ms ease-out both; }
+@keyframes chord-shimmer {
+  0%   { filter: brightness(1); text-shadow: none; }
+  30%  { filter: brightness(1.7); text-shadow: 0 0 14px rgba(255, 180, 84, 0.95), 0 0 26px rgba(190, 120, 255, 0.7); }
+  100% { filter: brightness(1); text-shadow: none; }
+}
+
+/* Jazzified toggle: a little more velvet than the amber. */
+.btn-jazz {
+  background: linear-gradient(135deg, #7c5cff, #ff5cb8);
+  color: #fff;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.12) inset, 0 4px 18px rgba(160, 90, 255, 0.35);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sparkle { animation-duration: 1ms; }
+  .sheet-shimmer .sheet .chord { animation: none; }
+}

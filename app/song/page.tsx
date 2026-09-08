@@ -9,6 +9,8 @@ import type { DetectedKey, Mode } from "@/lib/music/key";
 import { flatKey, noteName } from "@/lib/music/key";
 import { transposeChord } from "@/lib/music/chords";
 import { transitionBetweenSongs, type Transition } from "@/lib/music/transition";
+import { jazzifySong } from "@/lib/music/jazzify";
+import { burstSparkles } from "@/lib/sparkle";
 import { ChordSheet } from "@/components/ChordSheet";
 import { PlayableKeyboard } from "@/components/PlayableKeyboard";
 import { EndOfSong } from "@/components/EndOfSong";
@@ -90,6 +92,8 @@ function Player() {
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(28);
   const [suggestion, setSuggestion] = useState<{ item: SetlistItem; t: Transition } | null | undefined>(undefined);
+  const [jazzify, setJazzify] = useState(false);
+  const [shimmer, setShimmer] = useState(false);
   const appliedTransposeFor = useRef<string | null>(null);
 
   useAutoScroll(playing, speed);
@@ -110,6 +114,7 @@ function Player() {
     setData(null);
     setError(null);
     setSuggestion(undefined);
+    setJazzify(false); // Jazzify is a per-song opt-in
     fetch(`/api/song?${p.toString()}`, { signal: ctrl.signal })
       .then(async (res) => {
         const json = await res.json();
@@ -134,6 +139,21 @@ function Player() {
     () => (data ? data.parsed.chords.map((c) => transposeChord(c, semitones, preferFlat)) : []),
     [data, semitones, preferFlat],
   );
+
+  // Jazzify is a Juncle (piano) thing. Reharmonise in the song's own key; the
+  // sheet transposes the result on render like any other chord.
+  const jazzOn = jazzify && settings.instrument === "piano";
+  const displaySong = useMemo(
+    () => (data ? (jazzOn ? jazzifySong(data.parsed, data.detectedKey) : data.parsed) : null),
+    [data, jazzOn],
+  );
+
+  const onJazz = (e: React.MouseEvent<HTMLButtonElement>) => {
+    burstSparkles(e.currentTarget);
+    setJazzify((j) => !j);
+    setShimmer(true);
+    window.setTimeout(() => setShimmer(false), 950);
+  };
 
   const inSetlist = has(provider, id);
   const fav = isFavourite(provider, id);
@@ -246,6 +266,19 @@ function Player() {
           >
             {settings.instrument === "guitar" ? "🎸" : "🎹"}
           </button>
+
+          {settings.instrument === "piano" && (
+            <button
+              onClick={onJazz}
+              disabled={!data}
+              title="Jazzify: richer 7ths & 9ths, secondary dominants, walking bass"
+              className={`rounded-lg px-3 py-1.5 font-medium transition disabled:opacity-40 ${
+                jazzify ? "btn-jazz" : "bg-bg-elev-2 text-text hover:bg-bg-elev"
+              }`}
+            >
+              {jazzify ? "✨ Jazzified" : "✨ Jazzify"}
+            </button>
+          )}
 
           <button
             onClick={() => setPlaying((p) => !p)}
@@ -381,14 +414,16 @@ function Player() {
 
         {data && (
           <>
-            <ChordSheet
-              song={data.parsed}
-              semitones={semitones}
-              preferFlat={preferFlat}
-              fontSize={fontSize}
-              showPiano={settings.pianoVoicings}
-              legible={settings.legibleFont}
-            />
+            <div className={shimmer ? "sheet-shimmer" : undefined}>
+              <ChordSheet
+                song={displaySong ?? data.parsed}
+                semitones={semitones}
+                preferFlat={preferFlat}
+                fontSize={fontSize}
+                showPiano={settings.pianoVoicings}
+                legible={settings.legibleFont}
+              />
+            </div>
 
             {endTransition && nextInSetlist && (
               <EndOfSong
