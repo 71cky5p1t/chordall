@@ -41,6 +41,11 @@ export const viewport: Viewport = {
   themeColor: "#0c0d12",
   width: "device-width",
   initialScale: 1,
+  // It's a play-along app with its own text-size control: don't let a stray
+  // pinch zoom the whole UI out and leave it stuck there. (Safari proper ignores
+  // this for accessibility; the home-screen/standalone app honours it.)
+  maximumScale: 1,
+  userScalable: false,
   viewportFit: "cover", // extend into the notch / home-indicator areas
 };
 

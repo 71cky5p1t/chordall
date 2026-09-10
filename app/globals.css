@@ -34,12 +34,21 @@
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 
-html { color-scheme: dark; }
+html {
+  color-scheme: dark;
+  /* Never let the document grow wider than the screen: a wider layout is what
+     lets iOS pinch-zoom out (and stay there) with the sticky bars looking
+     narrow. On <html> this propagates to the viewport without turning <body>
+     into a scroll container, so window scrolling / auto-scroll keep working. */
+  overflow-x: hidden;
+}
 
 body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-sans);
+  overflow-x: clip; /* clip, not hidden: no new scroll container */
+  max-width: 100vw;
 }
 
 /* Chord-sheet layout: chords sit above lyrics. Lines wrap word-by-word so the
