@@ -30,14 +30,24 @@ Working MVP:
   lazy-loaded). Jye mode also swaps the homepage's suggested artists to a
   guitar-friendly set (`JYE_ARTISTS`) and lets country into the era/theme browse;
   Piano mode shows your listening-history artists and keeps country out.
-- **✨ Jazzify** (Juncle/piano mode, per song) — a toggle in the player that
-  reharmonises the chart with real jazz theory keyed to the detected key: plain
-  triads become 7ths/9ths by scale degree (I→maj7, ii→m7, V→7/9, vii°→m7b5,
-  minor-key V→7b9…), repeated-chord slots get secondary dominants
-  (`C C F` → `Cmaj7 C7 Fmaj7`), and walking-bass inversions smooth the bass line
-  (`G7/F → Cmaj7/E`). Chords the writer already made rich are left untouched.
-  Toggling it fires a sparkle burst and a chord shimmer (`lib/music/jazzify.ts`,
+- **✨ Jazzify** (Juncle/piano mode, per song; in the player *and* perform
+  mode) — each press turns the dial up a notch, five levels then back to base,
+  all keyed to the detected key and always leaving the writer's own rich chords
+  alone: **1 Mild** 7ths by scale degree (I→maj7, ii→m7, V→7, vii°→m7b5) ·
+  **2 Warm** + secondary dominants in repeated slots (`C C F` → `Cmaj7 C7 Fmaj7`)
+  · **3 Smooth** + walking-bass inversions (`G7/F → Cmaj7/E`) · **4 Rich** + 9ths
+  and 13ths · **5 Full jazz** + tritone substitutions (`G7 → Db9 → C`) and
+  altered secondary dominants. Every press fires a sparkle burst (bigger the
+  jazzier) and a chord shimmer (`lib/music/jazzify.ts`, `components/use-jazzify.ts`,
   `lib/sparkle.ts`).
+- **Focus while scrolling** — starting auto-scroll hides the site header and
+  collapses the controls to one slim row (key · ❚❚ · speed) so the chords get
+  the screen; pausing brings everything back.
+- **Installable (PWA)** — a web manifest plus Apple standalone tags: add it to an
+  iPhone home screen and it launches full-screen with no browser chrome,
+  extending under the notch (`viewport-fit=cover`) with safe-area padding on the
+  top bars and bottom tap-zones. Icons are in `public/` (rendered from
+  `public/icon.svg`).
 - **Playable scale keyboard** (piano mode) — the current key shows a two-octave
   keyboard with every scale note highlighted and named; tap any key to hear the
   pitch (Web Audio). In the player it sits in the header; in perform mode it's a

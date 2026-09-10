@@ -10,6 +10,7 @@ import { transitionBetweenSongs } from "@/lib/music/transition";
 import { ChordSheet } from "@/components/ChordSheet";
 import { EndOfSong } from "@/components/EndOfSong";
 import { PlayableKeyboard } from "@/components/PlayableKeyboard";
+import { useJazzify } from "@/components/use-jazzify";
 import { useAutoScroll } from "@/components/use-auto-scroll";
 import { animateScrollBy } from "@/lib/scroll";
 import { useSetlist } from "@/components/SetlistProvider";
@@ -81,6 +82,9 @@ export default function PerformPage() {
     [data, semitones, preferFlat],
   );
 
+  // Jazzify (Juncle/piano only): 5 escalating levels, reset on each song.
+  const jazz = useJazzify(data?.parsed ?? null, data?.detectedKey ?? null, settings.instrument === "piano", idx);
+
   const next = items[idx + 1] ?? null;
   const endTransition =
     next && effectiveChords.length
@@ -122,7 +126,7 @@ export default function PerformPage() {
   return (
     <div className="min-h-screen">
       {/* Performance top bar */}
-      <div className="sticky top-0 z-20 border-b border-border bg-bg/95 backdrop-blur">
+      <div className="safe-top sticky top-0 z-20 border-b border-border bg-bg/95 backdrop-blur">
         <div className="mx-auto flex max-w-4xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2 text-sm">
           <Link href="/setlist" className="rounded-lg bg-bg-elev-2 px-3 py-1.5 font-medium hover:bg-bg-elev" aria-label="Exit performance">
             ✕ Exit
@@ -145,7 +149,17 @@ export default function PerformPage() {
             {keyInfo?.label ?? "—"}{settings.instrument === "piano" ? " ⌨" : ""}
           </button>
         </div>
-        <div className="mx-auto flex max-w-4xl flex-wrap items-center gap-x-4 gap-y-2 px-4 pb-2 text-sm">
+        {/* Compact row while auto-scrolling. */}
+        {playing && (
+          <div className="mx-auto flex max-w-4xl items-center gap-3 px-4 pb-2 text-sm">
+            <button onClick={() => setPlaying(false)} className="rounded-lg bg-accent px-3 py-1 font-medium text-bg" title="Pause and show controls">
+              ❚❚
+            </button>
+            <input type="range" min={8} max={90} value={speed} onChange={(e) => setSpeed(Number(e.target.value))} className="w-28 accent-accent" aria-label="Scroll speed" />
+            <span className="ml-auto text-xs text-text-faint">tap ❚❚ for controls</span>
+          </div>
+        )}
+        <div className={`mx-auto flex max-w-4xl flex-wrap items-center gap-x-4 gap-y-2 px-4 pb-2 text-sm ${playing ? "hidden" : ""}`}>
           <div className="flex items-center gap-1.5">
             <button onClick={() => go(idx - 1)} disabled={idx === 0} className="rounded bg-bg-elev-2 px-2 py-1 hover:bg-bg-elev disabled:opacity-30">◀ Prev</button>
             <button onClick={() => go(idx + 1)} disabled={idx >= items.length - 1} className="rounded bg-bg-elev-2 px-2 py-1 hover:bg-bg-elev disabled:opacity-30">Next ▶</button>
@@ -159,6 +173,19 @@ export default function PerformPage() {
           >
             {settings.instrument === "guitar" ? "🎸" : "🎹"}
           </button>
+          {settings.instrument === "piano" && (
+            <button
+              onClick={jazz.bump}
+              disabled={!data}
+              title={jazz.title}
+              style={jazz.level > 0 ? { filter: `saturate(${1 + jazz.level * 0.12})` } : undefined}
+              className={`rounded-lg px-3 py-1.5 font-medium transition disabled:opacity-40 ${
+                jazz.level > 0 ? "btn-jazz" : "bg-bg-elev-2 hover:bg-bg-elev"
+              }`}
+            >
+              {jazz.label}
+            </button>
+          )}
           <button
             onClick={() => setPlaying((p) => !p)}
             className={`rounded-lg px-3 py-1.5 font-medium transition ${playing ? "bg-accent text-bg" : "bg-bg-elev-2 hover:bg-bg-elev"}`}
@@ -194,14 +221,16 @@ export default function PerformPage() {
 
         {data && (
           <>
-            <ChordSheet
-              song={data.parsed}
-              semitones={semitones}
-              preferFlat={preferFlat}
-              fontSize={fontSize}
-              showPiano={settings.pianoVoicings}
-              legible={settings.legibleFont}
-            />
+            <div className={jazz.shimmer ? "sheet-shimmer" : undefined}>
+              <ChordSheet
+                song={jazz.displaySong ?? data.parsed}
+                semitones={semitones}
+                preferFlat={preferFlat}
+                fontSize={fontSize}
+                showPiano={settings.pianoVoicings}
+                legible={settings.legibleFont}
+              />
+            </div>
 
             {next && endTransition ? (
               <EndOfSong
@@ -226,13 +255,13 @@ export default function PerformPage() {
       </main>
 
       {/* Bottom tap zones */}
-      <button onClick={() => bumpSpeed(6)} aria-label="Scroll faster" className="fixed bottom-4 left-4 z-30 rounded-full border border-border-strong bg-bg-elev-2/90 px-4 py-3 text-sm font-semibold shadow-lg backdrop-blur active:scale-95">
+      <button onClick={() => bumpSpeed(6)} aria-label="Scroll faster" className="tap-zone fixed bottom-4left-4 z-30 rounded-full border border-border-strong bg-bg-elev-2/90 px-4 py-3 text-sm font-semibold shadow-lg backdrop-blur active:scale-95">
         + Speed
       </button>
-      <button onClick={rewindHalf} aria-label="Rewind half a page" className="fixed bottom-4 left-1/2 z-30 -translate-x-1/2 rounded-full border border-border-strong bg-bg-elev-2/90 px-4 py-3 text-sm font-semibold shadow-lg backdrop-blur active:scale-95">
+      <button onClick={rewindHalf} aria-label="Rewind half a page" className="tap-zone fixed bottom-4left-1/2 z-30 -translate-x-1/2 rounded-full border border-border-strong bg-bg-elev-2/90 px-4 py-3 text-sm font-semibold shadow-lg backdrop-blur active:scale-95">
         ↑ Back
       </button>
-      <button onClick={() => bumpSpeed(-6)} aria-label="Scroll slower" className="fixed bottom-4 right-4 z-30 rounded-full border border-border-strong bg-bg-elev-2/90 px-4 py-3 text-sm font-semibold shadow-lg backdrop-blur active:scale-95">
+      <button onClick={() => bumpSpeed(-6)} aria-label="Scroll slower" className="tap-zone fixed bottom-4right-4 z-30 rounded-full border border-border-strong bg-bg-elev-2/90 px-4 py-3 text-sm font-semibold shadow-lg backdrop-blur active:scale-95">
         − Speed
       </button>
     </div>

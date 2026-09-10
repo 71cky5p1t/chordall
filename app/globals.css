@@ -86,6 +86,14 @@ body {
 }
 .sheet .tab-line .chord { color: var(--chord); font-weight: 700; }
 
+/* iPhone standalone (home-screen) mode: respect the notch and home indicator. */
+.safe-top { padding-top: env(safe-area-inset-top); }
+.tap-zone { bottom: calc(1rem + env(safe-area-inset-bottom)); }
+
+/* While auto-scrolling, the player hides the site header so the chords get the
+   screen (the player sets body[data-playing]). */
+body[data-playing="1"] .site-header { display: none; }
+
 /* thin scrollbars */
 * { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
 

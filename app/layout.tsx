@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { SetlistProvider } from "@/components/SetlistProvider";
@@ -20,6 +20,28 @@ export const metadata: Metadata = {
   title: "Chordall — chords & lyrics that follow along",
   description:
     "Search chords from anywhere, play along with lyrics + rich chords, and build setlists with seamless transitions between songs.",
+  manifest: "/manifest.webmanifest",
+  // iOS "Add to Home Screen": launch standalone, let content run under the
+  // status bar (we pad with safe-area insets), and use our icon.
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Chordall",
+  },
+  icons: {
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0c0d12",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover", // extend into the notch / home-indicator areas
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
