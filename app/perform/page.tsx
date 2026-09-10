@@ -210,7 +210,8 @@ export default function PerformPage() {
         )}
       </div>
 
-      <main className="mx-auto max-w-4xl px-4 py-6">
+      {/* Extra bottom padding so the floating tap-zones never cover the last lines. */}
+      <main className="mx-auto max-w-4xl px-4 pt-6 pb-32">
         {error && (
           <div className="rounded-lg border border-danger/40 bg-danger/10 px-4 py-3 text-danger">
             Couldn’t load this song: {error}
@@ -255,13 +256,13 @@ export default function PerformPage() {
       </main>
 
       {/* Bottom tap zones */}
-      <button onClick={() => bumpSpeed(6)} aria-label="Scroll faster" className="tap-zone fixed bottom-4left-4 z-30 rounded-full border border-border-strong bg-bg-elev-2/90 px-4 py-3 text-sm font-semibold shadow-lg backdrop-blur active:scale-95">
+      <button onClick={() => bumpSpeed(6)} aria-label="Scroll faster" className="tap-zone fixed bottom-4 left-4 z-30 rounded-full border border-border-strong bg-bg-elev-2/90 px-4 py-3 text-sm font-semibold shadow-lg backdrop-blur active:scale-95">
         + Speed
       </button>
-      <button onClick={rewindHalf} aria-label="Rewind half a page" className="tap-zone fixed bottom-4left-1/2 z-30 -translate-x-1/2 rounded-full border border-border-strong bg-bg-elev-2/90 px-4 py-3 text-sm font-semibold shadow-lg backdrop-blur active:scale-95">
+      <button onClick={rewindHalf} aria-label="Rewind half a page" className="tap-zone fixed bottom-4 left-1/2 z-30 -translate-x-1/2 rounded-full border border-border-strong bg-bg-elev-2/90 px-4 py-3 text-sm font-semibold shadow-lg backdrop-blur active:scale-95">
         ↑ Back
       </button>
-      <button onClick={() => bumpSpeed(-6)} aria-label="Scroll slower" className="tap-zone fixed bottom-4right-4 z-30 rounded-full border border-border-strong bg-bg-elev-2/90 px-4 py-3 text-sm font-semibold shadow-lg backdrop-blur active:scale-95">
+      <button onClick={() => bumpSpeed(-6)} aria-label="Scroll slower" className="tap-zone fixed bottom-4 right-4 z-30 rounded-full border border-border-strong bg-bg-elev-2/90 px-4 py-3 text-sm font-semibold shadow-lg backdrop-blur active:scale-95">
         − Speed
       </button>
     </div>
