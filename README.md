@@ -40,6 +40,11 @@ Working MVP:
   altered secondary dominants. Every press fires a sparkle burst (bigger the
   jazzier) and a chord shimmer (`lib/music/jazzify.ts`, `components/use-jazzify.ts`,
   `lib/sparkle.ts`).
+- **Screen stays awake** — the Screen Wake Lock API keeps the display lit while
+  auto-scrolling in the player and for the whole of perform mode (re-acquired
+  automatically if you switch apps and come back; released on pause). The compact
+  bar shows "☀ screen awake" while it holds. Works in iOS 16.4+ and the
+  home-screen app (`components/use-wake-lock.ts`).
 - **Focus while scrolling** — starting auto-scroll hides the site header and
   collapses the controls to one slim row (key · ❚❚ · speed) so the chords get
   the screen; pausing brings everything back.

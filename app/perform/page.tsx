@@ -12,6 +12,7 @@ import { EndOfSong } from "@/components/EndOfSong";
 import { PlayableKeyboard } from "@/components/PlayableKeyboard";
 import { useJazzify } from "@/components/use-jazzify";
 import { useAutoScroll } from "@/components/use-auto-scroll";
+import { useWakeLock } from "@/components/use-wake-lock";
 import { animateScrollBy } from "@/lib/scroll";
 import { useSetlist } from "@/components/SetlistProvider";
 import { useSettings } from "@/components/SettingsProvider";
@@ -37,6 +38,7 @@ export default function PerformPage() {
   const appliedFor = useRef<number>(-1);
 
   useAutoScroll(playing, speed);
+  const awake = useWakeLock(true); // whole performance: never let the screen lock mid-set
 
   const current = items[idx];
 
@@ -156,7 +158,7 @@ export default function PerformPage() {
               ❚❚
             </button>
             <input type="range" min={8} max={90} value={speed} onChange={(e) => setSpeed(Number(e.target.value))} className="w-28 accent-accent" aria-label="Scroll speed" />
-            <span className="ml-auto text-xs text-text-faint">tap ❚❚ for controls</span>
+            <span className="ml-auto text-xs text-text-faint">{awake ? "☀ screen awake · " : ""}tap ❚❚ for controls</span>
           </div>
         )}
         <div className={`mx-auto flex max-w-4xl flex-wrap items-center gap-x-4 gap-y-2 px-4 pb-2 text-sm ${playing ? "hidden" : ""}`}>

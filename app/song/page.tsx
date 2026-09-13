@@ -14,6 +14,7 @@ import { ChordSheet } from "@/components/ChordSheet";
 import { PlayableKeyboard } from "@/components/PlayableKeyboard";
 import { EndOfSong } from "@/components/EndOfSong";
 import { useAutoScroll } from "@/components/use-auto-scroll";
+import { useWakeLock } from "@/components/use-wake-lock";
 import { animateScrollBy } from "@/lib/scroll";
 import { useSetlist } from "@/components/SetlistProvider";
 import { useSettings } from "@/components/SettingsProvider";
@@ -94,6 +95,7 @@ function Player() {
   const appliedTransposeFor = useRef<string | null>(null);
 
   useAutoScroll(playing, speed);
+  const awake = useWakeLock(playing); // keep the screen lit while auto-scrolling
 
   // While scrolling, hide the site header (CSS keys off this) so the chords
   // get the whole screen; the controls bar collapses to one slim row too.
@@ -250,7 +252,7 @@ function Player() {
               className="w-28 accent-accent"
               aria-label="Scroll speed"
             />
-            <span className="ml-auto text-xs text-text-faint">tap ❚❚ for controls</span>
+            <span className="ml-auto text-xs text-text-faint">{awake ? "☀ screen awake · " : ""}tap ❚❚ for controls</span>
           </div>
         )}
         <div className={`mx-auto flex max-w-4xl flex-wrap items-center gap-x-5 gap-y-2 px-4 py-2 text-sm ${playing ? "hidden" : ""}`}>
