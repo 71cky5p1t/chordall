@@ -145,3 +145,65 @@ body[data-playing="1"] .site-header { display: none; }
   .sparkle { animation-duration: 1ms; }
   .sheet-shimmer .sheet .chord { animation: none; }
 }
+
+/* Auto-hiding top chrome: slides away on scroll-down, back on scroll-up. */
+.site-header { transition: transform 0.28s ease; }
+body[data-chrome="hidden"] .site-header { transform: translateY(-100%); }
+.topbar { transition: transform 0.28s ease; will-change: transform; }
+.topbar-hidden { transform: translateY(-100%); }
+.topbar-hidden-under { transform: translateY(calc(-100% - 57px)); } /* sits under the 57px site header */
+.chrome-reveal {
+  position: fixed;
+  top: calc(env(safe-area-inset-top) + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  padding: 2px 18px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: rgba(28, 31, 43, 0.9);
+  color: var(--text-dim);
+  font-size: 18px;
+  line-height: 1;
+  backdrop-filter: blur(6px);
+}
+
+/* Rocker stepper: [ −  value  + ] that tilts toward the pressed side. */
+.rocker {
+  display: inline-flex;
+  align-items: stretch;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-elev-2);
+  overflow: hidden;
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.35), 0 2px 6px rgba(0, 0, 0, 0.35);
+  transition: transform 0.16s ease-out;
+  transform: perspective(500px);
+}
+.rocker-side {
+  width: 44px;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  background: transparent;
+}
+.rocker-side:active { background: rgba(255, 255, 255, 0.08); }
+.rocker-val {
+  min-width: 56px;
+  padding: 0 10px;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--bg);
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+}
+.rocker-val:disabled { cursor: default; }
+.rocker-l { transform: perspective(500px) rotateY(-16deg) rotate(-2.5deg); }
+.rocker-r { transform: perspective(500px) rotateY(16deg) rotate(2.5deg); }
+@media (prefers-reduced-motion: reduce) {
+  .rocker-l, .rocker-r { transform: perspective(500px); }
+  .site-header, .topbar { transition: none; }
+}

@@ -13,6 +13,8 @@ import { PlayableKeyboard } from "@/components/PlayableKeyboard";
 import { useJazzify } from "@/components/use-jazzify";
 import { useAutoScroll } from "@/components/use-auto-scroll";
 import { useWakeLock } from "@/components/use-wake-lock";
+import { useAutoHide } from "@/components/use-auto-hide";
+import { Rocker } from "@/components/Rocker";
 import { animateScrollBy } from "@/lib/scroll";
 import { useSetlist } from "@/components/SetlistProvider";
 import { useSettings } from "@/components/SettingsProvider";
@@ -39,6 +41,7 @@ export default function PerformPage() {
 
   useAutoScroll(playing, speed);
   const awake = useWakeLock(true); // whole performance: never let the screen lock mid-set
+  const bar = useAutoHide(!playing); // top bar hides on scroll-down (not while auto-scrolling)
 
   const current = items[idx];
 
@@ -128,7 +131,7 @@ export default function PerformPage() {
   return (
     <div className="min-h-screen">
       {/* Performance top bar */}
-      <div className="safe-top sticky top-0 z-20 border-b border-border bg-bg/95 backdrop-blur">
+      <div className={`topbar safe-top sticky top-0 z-20 border-b border-border bg-bg/95 backdrop-blur ${bar.hidden ? "topbar-hidden" : ""}`}>
         <div className="mx-auto flex max-w-4xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2 text-sm">
           <Link href="/setlist" className="rounded-lg bg-bg-elev-2 px-3 py-1.5 font-medium hover:bg-bg-elev" aria-label="Exit performance">
             ✕ Exit
@@ -166,8 +169,8 @@ export default function PerformPage() {
             <button onClick={() => go(idx - 1)} disabled={idx === 0} className="rounded bg-bg-elev-2 px-2 py-1 hover:bg-bg-elev disabled:opacity-30">◀ Prev</button>
             <button onClick={() => go(idx + 1)} disabled={idx >= items.length - 1} className="rounded bg-bg-elev-2 px-2 py-1 hover:bg-bg-elev disabled:opacity-30">Next ▶</button>
           </div>
-          <Stepper label="Transpose" onDown={() => setSemitones((s) => s - 1)} onUp={() => setSemitones((s) => s + 1)} value={semitones > 0 ? `+${semitones}` : String(semitones)} />
-          <Stepper label="Text" onDown={() => setTextNudge((f) => f - 1)} onUp={() => setTextNudge((f) => f + 1)} value={String(fontSize)} />
+          <Rocker label="Transpose" onDown={() => setSemitones((s) => s - 1)} onUp={() => setSemitones((s) => s + 1)} value={semitones > 0 ? `+${semitones}` : String(semitones)} />
+          <Rocker label="Text" onDown={() => setTextNudge((f) => f - 1)} onUp={() => setTextNudge((f) => f + 1)} value={String(fontSize)} />
           <button
             onClick={() => update({ instrument: settings.instrument === "guitar" ? "piano" : "guitar" })}
             title={`Chord diagrams: ${settings.instrument} — tap to switch`}
@@ -211,6 +214,12 @@ export default function PerformPage() {
           </div>
         )}
       </div>
+
+      {bar.hidden && (
+        <button onClick={bar.reveal} className="chrome-reveal" aria-label="Show controls">
+          ⌄
+        </button>
+      )}
 
       {/* Extra bottom padding so the floating tap-zones never cover the last lines. */}
       <main className="mx-auto max-w-4xl px-4 pt-6 pb-32">
@@ -271,13 +280,3 @@ export default function PerformPage() {
   );
 }
 
-function Stepper({ label, onDown, onUp, value }: { label: string; onDown: () => void; onUp: () => void; value: string }) {
-  return (
-    <div className="flex items-center gap-1.5">
-      <span className="text-text-faint">{label}</span>
-      <button onClick={onDown} className="h-6 w-6 rounded bg-bg-elev-2 hover:bg-bg-elev">−</button>
-      <span className="w-8 text-center font-mono tabular-nums">{value}</span>
-      <button onClick={onUp} className="h-6 w-6 rounded bg-bg-elev-2 hover:bg-bg-elev">+</button>
-    </div>
-  );
-}

@@ -15,6 +15,8 @@ import { PlayableKeyboard } from "@/components/PlayableKeyboard";
 import { EndOfSong } from "@/components/EndOfSong";
 import { useAutoScroll } from "@/components/use-auto-scroll";
 import { useWakeLock } from "@/components/use-wake-lock";
+import { useAutoHide } from "@/components/use-auto-hide";
+import { Rocker } from "@/components/Rocker";
 import { animateScrollBy } from "@/lib/scroll";
 import { useSetlist } from "@/components/SetlistProvider";
 import { useSettings } from "@/components/SettingsProvider";
@@ -96,6 +98,7 @@ function Player() {
 
   useAutoScroll(playing, speed);
   const awake = useWakeLock(playing); // keep the screen lit while auto-scrolling
+  const bar = useAutoHide(!playing); // top chrome hides on scroll-down (not while auto-scrolling)
 
   // While scrolling, hide the site header (CSS keys off this) so the chords
   // get the whole screen; the controls bar collapses to one slim row too.
@@ -231,7 +234,7 @@ function Player() {
   return (
     <>
       {/* Controls */}
-      <div className={`sticky z-10 border-b border-border bg-bg/90 backdrop-blur ${playing ? "top-0 safe-top" : "top-[57px]"}`}>
+      <div className={`topbar sticky z-10 border-b border-border bg-bg/90 backdrop-blur ${playing ? "top-0 safe-top" : "top-[57px]"} ${bar.hidden ? (playing ? "topbar-hidden" : "topbar-hidden-under") : ""}`}>
         {/* Compact bar while auto-scrolling: just the essentials. */}
         {playing && (
           <div className="mx-auto flex max-w-4xl items-center gap-3 px-4 py-1.5 text-sm">
@@ -262,7 +265,7 @@ function Player() {
             </span>
           </Control>
           <Control label="Transpose">
-            <Stepper
+            <Rocker
               onDown={() => setSemitones((s) => s - 1)}
               onUp={() => setSemitones((s) => s + 1)}
               value={semitones > 0 ? `+${semitones}` : String(semitones)}
@@ -270,7 +273,7 @@ function Player() {
             />
           </Control>
           <Control label="Text">
-            <Stepper
+            <Rocker
               onDown={() => setTextNudge((f) => f - 1)}
               onUp={() => setTextNudge((f) => f + 1)}
               value={String(fontSize)}
@@ -350,6 +353,12 @@ function Player() {
           </div>
         </div>
       </div>
+
+      {bar.hidden && (
+        <button onClick={bar.reveal} className="chrome-reveal" aria-label="Show controls">
+          ⌄
+        </button>
+      )}
 
       {/* Extra bottom padding so the floating tap-zones never cover the last lines. */}
       <main className="mx-auto max-w-4xl px-4 pt-6 pb-32">
@@ -536,32 +545,6 @@ function Control({ label, children }: { label: string; children: React.ReactNode
   );
 }
 
-function Stepper({
-  onDown,
-  onUp,
-  value,
-  onReset,
-}: {
-  onDown: () => void;
-  onUp: () => void;
-  value: string;
-  onReset?: () => void;
-}) {
-  return (
-    <div className="flex items-center gap-1">
-      <button onClick={onDown} className="h-6 w-6 rounded bg-bg-elev-2 hover:bg-bg-elev">−</button>
-      <button
-        onClick={onReset}
-        disabled={!onReset}
-        className="w-8 text-center font-mono tabular-nums disabled:cursor-default"
-        title={onReset ? "reset" : undefined}
-      >
-        {value}
-      </button>
-      <button onClick={onUp} className="h-6 w-6 rounded bg-bg-elev-2 hover:bg-bg-elev">+</button>
-    </div>
-  );
-}
 
 function Tag({ children }: { children: React.ReactNode }) {
   return <span className="rounded-full border border-border px-2 py-0.5">{children}</span>;

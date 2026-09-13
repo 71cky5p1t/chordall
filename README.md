@@ -45,6 +45,13 @@ Working MVP:
   automatically if you switch apps and come back; released on pause). The compact
   bar shows "☀ screen awake" while it holds. Works in iOS 16.4+ and the
   home-screen app (`components/use-wake-lock.ts`).
+- **Top chrome gets out of the way** — scroll down and the header + controls
+  slide up off-screen; scroll up (or reach the top) and they slide back. A small
+  `⌄` tab at the top summons them any time. Paused while auto-scrolling, since the
+  compact bar is your pause button (`components/use-auto-hide.ts`).
+- **Rocker steppers** — Transpose and Text are single `[ −  value  + ]` pills with
+  44px touch targets that tilt like a rocker switch toward the side you press;
+  tap the value to reset (`components/Rocker.tsx`).
 - **Focus while scrolling** — starting auto-scroll hides the site header and
   collapses the controls to one slim row (key · ❚❚ · speed) so the chords get
   the screen; pausing brings everything back.
