@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { resolveByQuery } from "@/lib/resolve-song";
+import { MODEL, createLowEffort } from "@/lib/ai";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-// Default to Opus 5; override with CHORDALL_AI_MODEL (e.g. claude-haiku-4-5 to save cost).
-const MODEL = process.env.CHORDALL_AI_MODEL || "claude-opus-5";
 
 interface Suggestion {
   title: string;
@@ -51,10 +50,9 @@ export async function POST(req: NextRequest) {
 
   let suggestions: Suggestion[] = [];
   try {
-    const msg = await client.messages.create({
+    const msg = await createLowEffort(client, {
       model: MODEL,
       max_tokens: 1200,
-      output_config: { effort: "low" },
       system:
         "You are a setlist curator for a musician who plays piano and guitar. " +
         "Given a mood or theme, choose real, well-known, widely-covered songs that are " +

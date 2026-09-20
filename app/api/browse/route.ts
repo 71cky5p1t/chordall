@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { findChartLink } from "@/lib/resolve-song";
+import { MODEL, createLowEffort } from "@/lib/ai";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const MODEL = process.env.CHORDALL_AI_MODEL || "claude-opus-5";
 
 // The user never wants true country in auto-suggestions.
 const NO_COUNTRY =
@@ -60,10 +60,9 @@ export async function GET(req: NextRequest) {
   const client = new Anthropic();
   let suggestions: Suggestion[] = [];
   try {
-    const msg = await client.messages.create({
+    const msg = await createLowEffort(client, {
       model: MODEL,
       max_tokens: 1200,
-      output_config: { effort: "low" },
       system:
         "You are a music curator for a pianist/guitarist. Suggest real, famous songs " +
         "that are easy to find chord charts for. " +
