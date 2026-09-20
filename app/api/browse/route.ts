@@ -79,8 +79,18 @@ export async function GET(req: NextRequest) {
       .join("\n");
     suggestions = extractJsonArray(text).slice(0, 12);
   } catch (e) {
-    const err = e as { status?: number; message?: string };
-    return NextResponse.json({ error: `Claude request failed: ${err.message ?? String(e)}` }, { status: 502 });
+    // Surface the real upstream error. NOTE: not a 502 — Cloudflare replaces
+    // origin 502/504s with its own page, which hides the message we return.
+    const err = e as { status?: number; message?: string; name?: string };
+    console.error("[chordall ai] Claude request failed", { model: MODEL, status: err.status, name: err.name, message: err.message });
+    const hint =
+      err.status === 401 ? " (invalid API key)" :
+      err.status === 404 ? ` (model "${MODEL}" not found / no access)` :
+      err.status === 429 ? " (rate limited)" : "";
+    return NextResponse.json(
+      { error: `Claude request failed${hint}: ${err.message ?? String(e)}`, model: MODEL, status: err.status ?? null },
+      { status: 424 },
+    );
   }
 
   if (suggestions.length === 0) {

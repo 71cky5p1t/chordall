@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, type FormEvent } from "react";
+import { useState, useCallback, useEffect, useRef, type FormEvent } from "react";
 import Link from "next/link";
 import type { SearchResult } from "@/lib/providers/types";
 import { FAVOURITE_ARTISTS, JYE_ARTISTS } from "@/lib/artists";
@@ -37,6 +37,57 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [busyCat, setBusyCat] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  // Remember the last search/browse across navigation so Back from a song
+  // brings the results (and scroll position) straight back instead of a blank
+  // front page. Session-scoped: gone when the tab closes.
+  const STORE = "chordall.home.v1";
+  const restored = useRef(false);
+  useEffect(() => {
+    try {
+      const raw = window.sessionStorage.getItem(STORE);
+      if (raw) {
+        const saved = JSON.parse(raw) as { q: string; label: string | null; results: Row[] | null; errors: string[]; scrollY?: number };
+        setQ(saved.q ?? "");
+        setLabel(saved.label ?? null);
+        setResults(saved.results ?? null);
+        setErrors(saved.errors ?? []);
+        if (saved.results && typeof saved.scrollY === "number") {
+          requestAnimationFrame(() => window.scrollTo(0, saved.scrollY!));
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+    restored.current = true;
+  }, []);
+  useEffect(() => {
+    if (!restored.current) return;
+    try {
+      window.sessionStorage.setItem(STORE, JSON.stringify({ q, label, results, errors, scrollY: window.scrollY }));
+    } catch {
+      /* ignore */
+    }
+  }, [q, label, results, errors]);
+  useEffect(() => {
+    // Save the scroll position as we leave (client nav unmounts before the URL changes).
+    const save = () => {
+      try {
+        const raw = window.sessionStorage.getItem(STORE);
+        if (!raw) return;
+        const saved = JSON.parse(raw);
+        saved.scrollY = window.scrollY;
+        window.sessionStorage.setItem(STORE, JSON.stringify(saved));
+      } catch {
+        /* ignore */
+      }
+    };
+    window.addEventListener("pagehide", save);
+    return () => {
+      save();
+      window.removeEventListener("pagehide", save);
+    };
+  }, []);
+
   const { settings, update } = useSettings();
   const isJye = settings.instrument === "guitar";
   const artistList = isJye ? JYE_ARTISTS : FAVOURITE_ARTISTS;

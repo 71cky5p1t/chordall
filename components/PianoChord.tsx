@@ -13,11 +13,11 @@ export function PianoChord({ chord, preferFlat = false }: { chord: string; prefe
   const active = new Set(voicing.midi);
   const min = Math.min(...voicing.midi);
   const max = Math.max(...voicing.midi);
-  // Expand to whole octaves and give a little padding.
-  let startMidi = min - 2;
-  let endMidi = max + 2;
-  while (isBlack(startMidi)) startMidi--;
-  while (isBlack(endMidi)) endMidi++;
+  // Always show whole octaves anchored on C, so the 2+3 black-key pattern reads
+  // the way a real keyboard does (a keyboard that starts on G makes an A chord
+  // look like it sits on D). C at/below the lowest note .. B at/above the highest.
+  const startMidi = min - (((min % 12) + 12) % 12);
+  const endMidi = max + (11 - (((max % 12) + 12) % 12));
 
   const whiteKeys: number[] = [];
   for (let m = startMidi; m <= endMidi; m++) if (!isBlack(m)) whiteKeys.push(m);
@@ -40,21 +40,36 @@ export function PianoChord({ chord, preferFlat = false }: { chord: string; prefe
         role="img"
         aria-label={`${chord} piano voicing`}
       >
-        {/* white keys */}
+        {/* white keys (C keys carry a faint label as the octave anchor) */}
         {whiteKeys.map((m, i) => {
           const on = active.has(m);
+          const isC = ((m % 12) + 12) % 12 === 0;
           return (
-            <rect
-              key={`w${m}`}
-              x={i * W}
-              y={0}
-              width={W - 1}
-              height={H}
-              rx={2}
-              fill={on ? "var(--accent)" : "#f4f5f8"}
-              stroke="#0c0d12"
-              strokeWidth={0.5}
-            />
+            <g key={`w${m}`}>
+              <rect
+                x={i * W}
+                y={0}
+                width={W - 1}
+                height={H}
+                rx={2}
+                fill={on ? "var(--accent)" : "#f4f5f8"}
+                stroke="#0c0d12"
+                strokeWidth={0.5}
+              />
+              {isC && (
+                <text
+                  x={i * W + (W - 1) / 2}
+                  y={H - 5}
+                  textAnchor="middle"
+                  fontSize="7"
+                  fontFamily="var(--font-mono)"
+                  fill={on ? "#0c0d12" : "#9aa1b3"}
+                  pointerEvents="none"
+                >
+                  C
+                </text>
+              )}
+            </g>
           );
         })}
         {/* black keys */}
