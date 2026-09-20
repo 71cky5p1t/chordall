@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (suggestions.length === 0) {
-    return NextResponse.json({ error: "Claude returned no usable songs. Try rephrasing the mood." }, { status: 502 });
+    return NextResponse.json({ error: "Claude returned no usable songs. Try rephrasing the mood." }, { status: 424 });
   }
 
   // Resolve each suggestion to a real chord chart (in parallel).

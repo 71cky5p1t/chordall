@@ -94,7 +94,7 @@ export async function GET(req: NextRequest) {
   }
 
   if (suggestions.length === 0) {
-    return NextResponse.json({ error: "No songs came back. Try again." }, { status: 502 });
+    return NextResponse.json({ error: "No songs came back. Try again." }, { status: 424 });
   }
 
   const resolved = await Promise.all(
