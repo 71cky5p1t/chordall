@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef, type FormEvent } from "react";
+import { useState, useCallback, useEffect, type FormEvent } from "react";
 import Link from "next/link";
 import type { SearchResult } from "@/lib/providers/types";
 import { FAVOURITE_ARTISTS, JYE_ARTISTS } from "@/lib/artists";
@@ -41,7 +41,9 @@ export default function Home() {
   // brings the results (and scroll position) straight back instead of a blank
   // front page. Session-scoped: gone when the tab closes.
   const STORE = "chordall.home.v1";
-  const restored = useRef(false);
+  // State (not a ref): the save effect must not run until the recovered values
+  // have actually rendered, or it clobbers storage with the empty initial state.
+  const [hydrated, setHydrated] = useState(false);
   useEffect(() => {
     try {
       const raw = window.sessionStorage.getItem(STORE);
@@ -58,16 +60,16 @@ export default function Home() {
     } catch {
       /* ignore */
     }
-    restored.current = true;
+    setHydrated(true);
   }, []);
   useEffect(() => {
-    if (!restored.current) return;
+    if (!hydrated) return;
     try {
       window.sessionStorage.setItem(STORE, JSON.stringify({ q, label, results, errors, scrollY: window.scrollY }));
     } catch {
       /* ignore */
     }
-  }, [q, label, results, errors]);
+  }, [hydrated, q, label, results, errors]);
   useEffect(() => {
     // Save the scroll position as we leave (client nav unmounts before the URL changes).
     const save = () => {
