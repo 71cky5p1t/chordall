@@ -16,6 +16,12 @@ Working MVP:
 - **Player** — chords laid over lyrics, section labels, transpose (± semitones
   with live key readout), font size, auto-scroll with speed control, and a
   piano-voicing popover on any chord.
+- **Rich chords** — we keep whatever the source provides (`F#m7`, `Esus4`,
+  `Cmaj7/E`, …), not just triads.
+- **Setlist + transitions** — add songs, reorder them, and between each pair we
+  detect both keys and generate a short connecting progression (pivot chord when
+  the keys share one, otherwise a V7 lean into the next key) with piano diagrams
+  and a plain-English explanation.
 - **Phone-friendly wrapping** — UG stores chords on a separate line above the
   lyrics; we merge the two so each chord sits over its word, then wrap the line
   word-by-word so nothing runs off a narrow screen. Genuine ASCII tab/riffs are
@@ -89,6 +95,12 @@ Working MVP:
   curates a setlist; each song is resolved to a real chord chart with a bridge
   between them. Requires a Claude API key (see below).
 
+Not built yet (deliberately deferred — see "Roadmap"):
+
+- Automatic **chord analysis from audio** when a song isn't found anywhere.
+- Additional scraper providers beyond Ultimate Guitar.
+- Saved/named setlists, accounts, mobile polish.
+
 ## Enabling the AI setlist
 
 Create `.env.local` in the project root:
@@ -103,18 +115,6 @@ Restart `npm run dev`. Without a key, everything else works and the generator
 shows a friendly "add your key" message. If an AI call fails, the message shown
 in the UI is the real upstream error (the routes log it too — `docker logs
 chordall`), so misconfiguration is diagnosable rather than a blank 502.
-- **Rich chords** — we keep whatever the source provides (`F#m7`, `Esus4`,
-  `Cmaj7/E`, …), not just triads.
-- **Setlist + transitions** — add songs, reorder them, and between each pair we
-  detect both keys and generate a short connecting progression (pivot chord when
-  the keys share one, otherwise a V7 lean into the next key) with piano diagrams
-  and a plain-English explanation.
-
-Not built yet (deliberately deferred — see "Roadmap"):
-
-- Automatic **chord analysis from audio** when a song isn't found anywhere.
-- Additional scraper providers beyond Ultimate Guitar.
-- Saved/named setlists, accounts, mobile polish.
 
 ## Architecture
 
