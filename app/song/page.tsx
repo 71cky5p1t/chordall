@@ -93,7 +93,10 @@ function Player() {
   const [textNudge, setTextNudge] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(28);
-  const [suggestion, setSuggestion] = useState<{ item: SetlistItem; t: Transition } | null | undefined>(undefined);
+  const [suggestions, setSuggestions] = useState<{ item: SetlistItem; t: Transition }[] | undefined>(undefined);
+  const [suggestBusy, setSuggestBusy] = useState(false);
+  const [suggestErr, setSuggestErr] = useState<string | null>(null);
+  const shownTitles = useRef<string[]>([]);
   const appliedTransposeFor = useRef<string | null>(null);
 
   useAutoScroll(playing, speed);
@@ -124,7 +127,9 @@ function Player() {
     const p = new URLSearchParams({ provider, id, url });
     setData(null);
     setError(null);
-    setSuggestion(undefined);
+    setSuggestions(undefined);
+    setSuggestErr(null);
+    shownTitles.current = [];
     fetch(`/api/song?${p.toString()}`, { signal: ctrl.signal })
       .then(async (res) => {
         const json = await res.json();
@@ -206,16 +211,63 @@ function Player() {
     router.push(`/song?${p.toString()}`);
   };
 
+  const rankOf = (t: Transition) => REL_RANK[t.relationship] ?? 5;
+  const withTransition = (it: Omit<SetlistItem, "uid">) => {
+    const t = transitionBetweenSongs(effectiveChords, playChords(it.chords));
+    return t ? { item: { ...it, uid: `${it.provider}:${it.songId}` }, t } : null;
+  };
+
+  // Up to 6 options, ranked by how smoothly they follow the current song,
+  // drawn from favourites + the setlist (deduped, excluding this song).
   const onSuggest = () => {
-    const candidates = favourites.filter((f) => !(f.provider === provider && f.songId === id));
-    let best: { item: SetlistItem; t: Transition; rank: number } | null = null;
-    for (const f of candidates) {
-      const t = transitionBetweenSongs(effectiveChords, playChords(f.chords));
-      if (!t) continue;
-      const rank = REL_RANK[t.relationship] ?? 5;
-      if (!best || rank < best.rank) best = { item: { ...f, uid: `${f.provider}:${f.songId}` }, t, rank };
+    const seen = new Set<string>([`${provider}:${id}`]);
+    const pool: Omit<SetlistItem, "uid">[] = [];
+    for (const f of [...favourites, ...setlistItems]) {
+      const k = `${f.provider}:${f.songId}`;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      pool.push(f);
     }
-    setSuggestion(best ? { item: best.item, t: best.t } : null);
+    const ranked = pool
+      .map(withTransition)
+      .filter((x): x is { item: SetlistItem; t: Transition } => !!x)
+      .sort((a, b) => rankOf(a.t) - rankOf(b.t))
+      .slice(0, 6);
+    shownTitles.current = ranked.map((r) => r.item.title);
+    setSuggestErr(null);
+    setSuggestions(ranked);
+  };
+
+  // "Skip — more ideas": ask Claude for 6 fresh songs that flow after this one.
+  const onMoreIdeas = async () => {
+    setSuggestBusy(true);
+    setSuggestErr(null);
+    try {
+      const res = await fetch("/api/suggest-next", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          artist,
+          key: keyInfo?.label ?? "",
+          exclude: [...shownTitles.current, title],
+          allowCountry: settings.instrument === "guitar",
+          count: 6,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "couldn’t get more ideas");
+      const next = (data.items as Omit<SetlistItem, "uid">[])
+        .map(withTransition)
+        .filter((x): x is { item: SetlistItem; t: Transition } => !!x)
+        .sort((a, b) => rankOf(a.t) - rankOf(b.t));
+      shownTitles.current = [...shownTitles.current, ...next.map((r) => r.item.title)].slice(-60);
+      setSuggestions(next);
+    } catch (e) {
+      setSuggestErr(String(e instanceof Error ? e.message : e));
+    } finally {
+      setSuggestBusy(false);
+    }
   };
 
   const bumpSpeed = (delta: number) => {
@@ -337,8 +389,8 @@ function Player() {
             </button>
             <button
               onClick={onSuggest}
-              disabled={!data || favourites.length === 0}
-              title={favourites.length === 0 ? "Favourite a few songs first" : "Suggest a song to play next"}
+              disabled={!data}
+              title="Suggest what to play next — from your favourites & setlist, or fresh ideas"
               className="rounded-lg border border-accent-2 px-3 py-1.5 font-medium text-accent-2 transition hover:bg-accent-2 hover:text-bg disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-accent-2"
             >
               Suggest next
@@ -422,12 +474,16 @@ function Player() {
           )}
         </div>
 
-        {suggestion !== undefined && (
-          <SuggestionCard
-            suggestion={suggestion}
-            onDismiss={() => setSuggestion(undefined)}
+        {suggestions !== undefined && (
+          <SuggestionList
+            suggestions={suggestions}
+            busy={suggestBusy}
+            error={suggestErr}
+            onMore={onMoreIdeas}
+            onDismiss={() => setSuggestions(undefined)}
             onPlay={(it) => gotoSong({ provider: it.provider, songId: it.songId, url: it.url, title: it.title, artist: it.artist })}
             onAdd={(it) => add({ ...it })}
+            inSetlist={(it) => has(it.provider, it.songId)}
           />
         )}
 
@@ -494,44 +550,73 @@ function Player() {
   );
 }
 
-function SuggestionCard({
-  suggestion,
+function SuggestionList({
+  suggestions,
+  busy,
+  error,
+  onMore,
   onDismiss,
   onPlay,
   onAdd,
+  inSetlist,
 }: {
-  suggestion: { item: SetlistItem; t: Transition } | null;
+  suggestions: { item: SetlistItem; t: Transition }[];
+  busy: boolean;
+  error: string | null;
+  onMore: () => void;
   onDismiss: () => void;
   onPlay: (it: SetlistItem) => void;
   onAdd: (it: SetlistItem) => void;
+  inSetlist: (it: SetlistItem) => boolean;
 }) {
-  if (suggestion === null) {
-    return (
-      <div className="mb-5 rounded-xl border border-border bg-bg-elev px-4 py-3 text-sm text-text-dim">
-        No good match in your favourites yet. Favourite a few more songs and try again.
-        <button onClick={onDismiss} className="ml-2 text-text-faint underline">dismiss</button>
-      </div>
-    );
-  }
-  const { item, t } = suggestion;
   return (
     <div className="mb-5 rounded-xl border border-accent-2/40 bg-accent-2/5 px-4 py-3">
       <div className="flex items-center gap-2">
         <span className="text-xs font-semibold uppercase tracking-wider text-accent-2">Suggested next</span>
         <button onClick={onDismiss} className="ml-auto text-text-faint underline">dismiss</button>
       </div>
-      <div className="mt-1 font-medium">
-        {item.title} <span className="text-text-dim">— {item.artist}</span>
-      </div>
-      <p className="mt-1 text-sm text-text-dim">{t.description}</p>
-      <div className="mt-2 flex items-center gap-2">
-        <button onClick={() => onPlay(item)} className="rounded-lg bg-accent-2 px-3 py-1.5 text-sm font-medium text-bg">
-          Play it
-        </button>
-        <button onClick={() => onAdd(item)} className="rounded-lg border border-border px-3 py-1.5 text-sm text-text-dim hover:text-text">
-          Add to setlist
-        </button>
-      </div>
+
+      {suggestions.length === 0 ? (
+        <p className="mt-2 text-sm text-text-dim">
+          Nothing in your favourites or setlist to pull from yet — try “more ideas” for fresh picks.
+        </p>
+      ) : (
+        <ul className="mt-2 divide-y divide-border/60">
+          {suggestions.map(({ item, t }) => (
+            <li key={item.uid} className="flex items-center gap-3 py-2">
+              <div className="min-w-0 flex-1">
+                <div className="truncate font-medium">
+                  {item.title} <span className="text-text-dim">— {item.artist}</span>
+                </div>
+                <div className="truncate text-xs text-text-faint">
+                  {t.toKey} · {t.relationship} · play {t.chords.slice(0, -1).join(" → ")} into {t.chords[t.chords.length - 1]}
+                </div>
+              </div>
+              <button onClick={() => onPlay(item)} className="shrink-0 rounded-lg bg-accent-2 px-3 py-1.5 text-sm font-medium text-bg">
+                Play
+              </button>
+              <button
+                onClick={() => onAdd(item)}
+                disabled={inSetlist(item)}
+                className="shrink-0 rounded-lg border border-border px-2.5 py-1.5 text-sm text-text-dim hover:text-text disabled:opacity-40"
+                title={inSetlist(item) ? "Already in setlist" : "Add to setlist"}
+              >
+                {inSetlist(item) ? "✓" : "+"}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {error && <p className="mt-2 text-xs text-danger">{error}</p>}
+
+      <button
+        onClick={onMore}
+        disabled={busy}
+        className="mt-3 w-full rounded-lg border border-accent-2/50 px-3 py-2 text-sm font-medium text-accent-2 transition hover:bg-accent-2 hover:text-bg disabled:opacity-50"
+      >
+        {busy ? "Thinking…" : "Skip — more ideas ✨"}
+      </button>
     </div>
   );
 }

@@ -74,8 +74,12 @@ Working MVP:
   history — see `lib/artists.ts`), plus era/theme chips (Musicals, 50s–00s) that
   Claude curates on click — with a hard "no true country" rule. Category browse
   needs the Claude API key; artist chips are just searches and always work.
-- **Favourites** + **Suggest next** — heart songs; "Suggest next" picks the
-  smoothest-transition song from your favourites and shows the bridge.
+- **Favourites** + **Suggest next** — heart songs; "Suggest next" lists up to
+  six options ranked by how smoothly they follow the current song (drawn from
+  your favourites + setlist, each with its bridge chords), and **"Skip — more
+  ideas ✨"** asks Claude for six fresh songs that flow next (similar vibe/era,
+  same or related key, never repeating what you've seen), resolved to real
+  charts (`/api/suggest-next`).
 - **End-of-song transition** — when the current song is in a setlist, the bottom
   shows the bridge into the next song, a "Next song →" button, and (optional)
   auto-advance after a configurable delay.
