@@ -14,13 +14,17 @@ export function supportsEffort(model: string): boolean {
   return /claude-(opus-(4-[5-9]|5)|sonnet-(4-[6-9]|5)|fable|mythos)/.test(model);
 }
 
-type CreateParams = Parameters<Anthropic["messages"]["create"]>[0];
+// Non-streaming params so the overload resolves to a plain Message (not a Stream).
+type CreateParams = Anthropic.MessageCreateParamsNonStreaming;
 
 /**
  * messages.create with low effort where supported. If the API still rejects
  * `effort` (an unknown/new model), retry once without it rather than failing.
  */
-export async function createLowEffort(client: Anthropic, params: Omit<CreateParams, "output_config">) {
+export async function createLowEffort(
+  client: Anthropic,
+  params: Omit<CreateParams, "output_config">,
+): Promise<Anthropic.Message> {
   const withEffort = supportsEffort(MODEL);
   try {
     return await client.messages.create({ ...params, ...(withEffort ? { output_config: { effort: "low" } } : {}) } as CreateParams);
