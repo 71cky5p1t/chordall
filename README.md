@@ -100,7 +100,9 @@ ANTHROPIC_API_KEY=sk-ant-...
 ```
 
 Restart `npm run dev`. Without a key, everything else works and the generator
-shows a friendly "add your key" message.
+shows a friendly "add your key" message. If an AI call fails, the message shown
+in the UI is the real upstream error (the routes log it too — `docker logs
+chordall`), so misconfiguration is diagnosable rather than a blank 502.
 - **Rich chords** — we keep whatever the source provides (`F#m7`, `Esus4`,
   `Cmaj7/E`, …), not just triads.
 - **Setlist + transitions** — add songs, reorder them, and between each pair we
