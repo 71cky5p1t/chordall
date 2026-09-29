@@ -39,7 +39,7 @@ export default function PerformPage() {
   const [showKeys, setShowKeys] = useState(false);
   const appliedFor = useRef<number>(-1);
 
-  useAutoScroll(playing, speed);
+  useAutoScroll(playing, speed, () => setPlaying(false)); // scrolling up by hand pauses
   const awake = useWakeLock(true); // whole performance: never let the screen lock mid-set
   const bar = useAutoHide(!playing); // top bar hides on scroll-down (not while auto-scrolling)
 

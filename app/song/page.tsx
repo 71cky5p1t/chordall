@@ -99,7 +99,7 @@ function Player() {
   const shownTitles = useRef<string[]>([]);
   const appliedTransposeFor = useRef<string | null>(null);
 
-  useAutoScroll(playing, speed);
+  useAutoScroll(playing, speed, () => setPlaying(false)); // scrolling up by hand pauses
   const awake = useWakeLock(playing); // keep the screen lit while auto-scrolling
   const bar = useAutoHide(!playing); // top chrome hides on scroll-down (not while auto-scrolling)
 
