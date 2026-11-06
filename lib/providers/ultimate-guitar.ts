@@ -46,6 +46,47 @@ function extractStore(html: string): any {
 
 const CHORD_TYPES = new Set(["Chords", "Ukulele Chords", "Piano"]);
 
+// Listed in search but carry no readable body, so opening one can only fail.
+const NO_CONTENT_TYPES = new Set(["Pro", "Power", "Official", "Video"]);
+
+// UG's `type` filter for chord charts.
+const CHORDS_FILTER = "300";
+
+/** One page of raw search rows, plus how many pages UG says there are. */
+async function searchPage(
+  query: string,
+  page: number,
+  type: string | null,
+  signal?: AbortSignal,
+): Promise<{ rows: any[]; totalPages: number }> {
+  const url =
+    "https://www.ultimate-guitar.com/search.php?search_type=title&value=" +
+    encodeURIComponent(query) +
+    `&page=${page}` +
+    (type ? `&type=${type}` : "");
+  const data = extractStore(await getHtml(url, signal))?.store?.page?.data;
+  return { rows: data?.results ?? [], totalPages: data?.pagination?.total ?? 1 };
+}
+
+/**
+ * Chord charts only: unfiltered, one popular song's tabs, bass tabs and so on
+ * fill the page. One request at a time, because UG answers bursts with 503s.
+ * A page that fails just ends the walk, keeping what we have so far.
+ */
+async function searchChordRows(query: string, pages: number, signal?: AbortSignal): Promise<any[]> {
+  const rows: any[] = [];
+  try {
+    for (let page = 1; page <= pages; page++) {
+      const { rows: found, totalPages } = await searchPage(query, page, CHORDS_FILTER, signal);
+      rows.push(...found);
+      if (page >= totalPages) break;
+    }
+  } catch {
+    // Fall through with whatever was gathered.
+  }
+  return rows;
+}
+
 export const ultimateGuitar: ChordProvider = {
   name: "ultimate-guitar",
   label: "Ultimate Guitar",
@@ -54,16 +95,14 @@ export const ultimateGuitar: ChordProvider = {
     return /ultimate-guitar\.com/.test(url);
   },
 
-  async search(query, signal) {
-    const url =
-      "https://www.ultimate-guitar.com/search.php?search_type=title&value=" +
-      encodeURIComponent(query);
-    const html = await getHtml(url, signal);
-    const store = extractStore(html);
-    const results: any[] = store?.store?.page?.data?.results ?? [];
+  async search(query, signal, options) {
+    let rows = await searchChordRows(query, options?.pages ?? 1, signal);
+    // Songs with no chord chart (tab-only instrumentals) still deserve a result.
+    if (rows.length === 0) rows = (await searchPage(query, 1, null, signal)).rows;
 
-    return results
-      .filter((r) => r && r.id && r.song_name && r.marketing_type !== "Pro")
+    const unique = new Map(rows.filter((r) => r?.id).map((r) => [r.id, r]));
+    return [...unique.values()]
+      .filter((r) => r.song_name && r.marketing_type !== "Pro" && !NO_CONTENT_TYPES.has(r.type))
       .map(
         (r): SearchResult => ({
           provider: "ultimate-guitar",
@@ -74,6 +113,8 @@ export const ultimateGuitar: ChordProvider = {
           type: r.type,
           rating: r.rating,
           votes: r.votes,
+          version: r.version,
+          part: r.part || undefined,
         }),
       )
       // Chords first (best for our chords-over-lyrics view), then by rating*votes.

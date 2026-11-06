@@ -13,6 +13,8 @@ any instrument.
 Working MVP:
 
 - **Search** across providers (Ultimate Guitar today; pluggable for more).
+  Every transcription of a song folds into one row that opens the best-rated
+  chart, with a `N versions` toggle for the rest.
 - **Player** — chords laid over lyrics, section labels, transpose (± semitones
   with live key readout), font size, auto-scroll with speed control, and a
   piano-voicing popover on any chord.

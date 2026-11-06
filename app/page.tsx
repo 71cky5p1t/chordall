@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useCallback, useEffect, type FormEvent } from "react";
+import { useState, useCallback, useEffect, useMemo, type FormEvent } from "react";
 import Link from "next/link";
 import type { SearchResult } from "@/lib/providers/types";
+import { groupSongs } from "@/lib/providers/group";
 import { FAVOURITE_ARTISTS, JYE_ARTISTS } from "@/lib/artists";
 import { useSettings } from "@/components/SettingsProvider";
 
@@ -27,11 +28,18 @@ const CATEGORIES: { id: string; label: string }[] = [
   { id: "2000s", label: "00s" },
 ];
 
-type Row = SearchResult | { provider: string; id: string; url: string; title: string; artist: string };
+// Search rows carry the extras; browse rows are just a link.
+type Row = Pick<SearchResult, "provider" | "id" | "url" | "title" | "artist"> & Partial<SearchResult>;
+
+function ratingLabel(r: Row) {
+  if (typeof r.rating !== "number") return null;
+  return `★ ${r.rating.toFixed(1)}${r.votes ? ` · ${r.votes.toLocaleString()}` : ""}`;
+}
 
 export default function Home() {
   const [q, setQ] = useState("");
   const [results, setResults] = useState<Row[] | null>(null);
+  const [openSong, setOpenSong] = useState<string | null>(null);
   const [label, setLabel] = useState<string | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -48,11 +56,12 @@ export default function Home() {
     try {
       const raw = window.sessionStorage.getItem(STORE);
       if (raw) {
-        const saved = JSON.parse(raw) as { q: string; label: string | null; results: Row[] | null; errors: string[]; scrollY?: number };
+        const saved = JSON.parse(raw) as { q: string; label: string | null; results: Row[] | null; errors: string[]; openSong?: string | null; scrollY?: number };
         setQ(saved.q ?? "");
         setLabel(saved.label ?? null);
         setResults(saved.results ?? null);
         setErrors(saved.errors ?? []);
+        setOpenSong(saved.openSong ?? null);
         if (saved.results && typeof saved.scrollY === "number") {
           requestAnimationFrame(() => window.scrollTo(0, saved.scrollY!));
         }
@@ -65,11 +74,11 @@ export default function Home() {
   useEffect(() => {
     if (!hydrated) return;
     try {
-      window.sessionStorage.setItem(STORE, JSON.stringify({ q, label, results, errors, scrollY: window.scrollY }));
+      window.sessionStorage.setItem(STORE, JSON.stringify({ q, label, results, errors, openSong, scrollY: window.scrollY }));
     } catch {
       /* ignore */
     }
-  }, [hydrated, q, label, results, errors]);
+  }, [hydrated, q, label, results, errors, openSong]);
   useEffect(() => {
     // Save the scroll position as we leave (client nav unmounts before the URL changes).
     const save = () => {
@@ -90,6 +99,8 @@ export default function Home() {
     };
   }, []);
 
+  const songs = useMemo(() => groupSongs(results ?? []), [results]);
+
   const { settings, update } = useSettings();
   const isJye = settings.instrument === "guitar";
   const artistList = isJye ? JYE_ARTISTS : FAVOURITE_ARTISTS;
@@ -99,6 +110,7 @@ export default function Home() {
     setLoading(true);
     setErr(null);
     setResults(null);
+    setOpenSong(null);
     setBusyCat(null);
     setLabel(`Results for “${query.trim()}”`);
     try {
@@ -128,6 +140,7 @@ export default function Home() {
     setBusyCat(id);
     setErr(null);
     setResults(null);
+    setOpenSong(null);
     setLoading(false);
     setLabel(`${catLabel} picks`);
     try {
@@ -273,34 +286,71 @@ export default function Home() {
               ← browse
             </button>
           </div>
-          {results.length === 0 ? (
+          {songs.length === 0 ? (
             <p className="text-center text-text-dim">No results. Try another spelling.</p>
           ) : (
             <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border">
-              {results.map((r, i) => (
-                <li key={`${r.provider}-${r.id}-${i}`}>
-                  <Link
-                    href={songHref(r)}
-                    className="flex items-center gap-3 bg-bg-elev px-4 py-3 transition hover:bg-bg-elev-2"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate font-medium">{r.title}</div>
-                      <div className="truncate text-sm text-text-dim">{r.artist}</div>
+              {songs.map(({ key, best, versions }) => {
+                const open = openSong === key;
+                return (
+                  <li key={key} className="bg-bg-elev">
+                    <div className="flex items-stretch">
+                      <Link
+                        href={songHref(best)}
+                        className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 transition hover:bg-bg-elev-2"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate font-medium">{best.title}</div>
+                          <div className="flex items-baseline gap-2">
+                            <span className="truncate text-sm text-text-dim">{best.artist}</span>
+                            {ratingLabel(best) && (
+                              <span className="shrink-0 text-xs text-text-faint tabular-nums">
+                                {ratingLabel(best)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {best.type && best.type !== "Chords" && (
+                          <span className="shrink-0 rounded-full border border-border-strong px-2 py-0.5 text-xs text-text-dim">
+                            {best.type}
+                          </span>
+                        )}
+                      </Link>
+                      {versions.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setOpenSong(open ? null : key)}
+                          aria-expanded={open}
+                          aria-label={`${versions.length} versions of ${best.title}`}
+                          className="shrink-0 border-l border-border px-3 text-xs text-text-dim transition hover:bg-bg-elev-2 hover:text-text"
+                        >
+                          {versions.length} versions {open ? "▴" : "▾"}
+                        </button>
+                      )}
                     </div>
-                    {"type" in r && r.type && (
-                      <span className="shrink-0 rounded-full border border-border-strong px-2 py-0.5 text-xs text-text-dim">
-                        {r.type}
-                      </span>
+                    {open && (
+                      <div className="flex flex-wrap gap-2 border-t border-border px-4 py-3">
+                        {versions.map((v, i) => (
+                          <Link
+                            key={v.id}
+                            href={songHref(v)}
+                            className="rounded-lg border border-border px-3 py-2 text-xs text-text-dim tabular-nums transition hover:border-accent hover:text-accent"
+                          >
+                            {[
+                              `v${v.version ?? i + 1}`,
+                              v.part,
+                              v.type !== "Chords" ? v.type : null,
+                              ratingLabel(v),
+                            ]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </Link>
+                        ))}
+                      </div>
                     )}
-                    {"rating" in r && typeof r.rating === "number" && (
-                      <span className="shrink-0 text-xs text-text-faint tabular-nums">
-                        ★ {r.rating.toFixed(1)}
-                        {"votes" in r && r.votes ? ` · ${r.votes}` : ""}
-                      </span>
-                    )}
-                  </Link>
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
           )}
           {errors.length > 0 && (

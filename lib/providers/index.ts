@@ -1,6 +1,6 @@
 // Provider registry + aggregated search. Add new scrapers here.
 
-import { type ChordProvider, type SearchResult, type FetchedSong } from "./types";
+import { type ChordProvider, type SearchResult, type SearchOptions, type FetchedSong } from "./types";
 import { ultimateGuitar } from "./ultimate-guitar";
 
 export const providers: ChordProvider[] = [ultimateGuitar];
@@ -15,9 +15,10 @@ export function getProvider(name: string): ChordProvider | undefined {
 export async function searchAll(
   query: string,
   signal?: AbortSignal,
+  options?: SearchOptions,
 ): Promise<{ results: SearchResult[]; errors: string[] }> {
   const settled = await Promise.allSettled(
-    providers.map((p) => p.search(query, signal)),
+    providers.map((p) => p.search(query, signal, options)),
   );
   const results: SearchResult[] = [];
   const errors: string[] = [];

@@ -10,6 +10,13 @@ export interface SearchResult {
   type?: string;         // "Chords" | "Tab" | "Ukulele" | ...
   rating?: number;
   votes?: number;
+  version?: number;      // 1, 2, 3 ... as labelled by the source
+  part?: string;         // "album", "live", ... when the source tells versions apart
+}
+
+export interface SearchOptions {
+  /** Result pages to walk. Each is a request to the source, so bulk callers keep the default of 1. */
+  pages?: number;
 }
 
 export interface SongVersion {
@@ -42,7 +49,7 @@ export interface FetchedSong {
 export interface ChordProvider {
   name: string;
   label: string;
-  search(query: string, signal?: AbortSignal): Promise<SearchResult[]>;
+  search(query: string, signal?: AbortSignal, options?: SearchOptions): Promise<SearchResult[]>;
   fetchSong(id: string, url: string, signal?: AbortSignal): Promise<FetchedSong>;
   /** Whether this provider can handle a given result/url for fetching. */
   canFetch?(url: string): boolean;
