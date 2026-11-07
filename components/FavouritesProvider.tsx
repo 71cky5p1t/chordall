@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { backfillCapo } from "@/lib/backfill-capo";
 import type { SetlistItem } from "@/lib/setlist-types";
 
 export type FavouriteItem = Omit<SetlistItem, "uid">;
@@ -18,6 +19,9 @@ interface Ctx {
   toggle: (item: FavouriteItem) => void;
   isFavourite: (provider: string, songId: string) => boolean;
   remove: (provider: string, songId: string) => void;
+  restore: (items: FavouriteItem[]) => void;
+  /** False until saved data has loaded, so "empty" states don't flash. */
+  ready: boolean;
 }
 
 const FavCtx = createContext<Ctx | null>(null);
@@ -29,7 +33,10 @@ export function FavouritesProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(KEY);
-      if (raw) setFavourites(JSON.parse(raw));
+      const parsed: unknown = raw ? JSON.parse(raw) : [];
+      if (Array.isArray(parsed)) {
+        setFavourites((parsed as FavouriteItem[]).filter((f) => f?.songId && Array.isArray(f.chords)));
+      }
     } catch {
       /* ignore */
     }
@@ -44,6 +51,21 @@ export function FavouritesProvider({ children }: { children: ReactNode }) {
       /* ignore */
     }
   }, [favourites, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    const ctrl = new AbortController();
+    backfillCapo(favourites, ctrl.signal, (song, capo) =>
+      setFavourites((prev) =>
+        prev.map((f) =>
+          f.provider === song.provider && f.songId === song.songId ? { ...f, capo } : f,
+        ),
+      ),
+    );
+    return () => ctrl.abort();
+    // Once, for what was saved: anything added from now on knows its capo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated]);
 
   const isFavourite: Ctx["isFavourite"] = (provider, songId) =>
     favourites.some((f) => f.provider === provider && f.songId === songId);
@@ -64,7 +86,7 @@ export function FavouritesProvider({ children }: { children: ReactNode }) {
     );
 
   return (
-    <FavCtx.Provider value={{ favourites, toggle, isFavourite, remove }}>
+    <FavCtx.Provider value={{ favourites, toggle, isFavourite, remove, restore: setFavourites, ready: hydrated }}>
       {children}
     </FavCtx.Provider>
   );

@@ -19,6 +19,7 @@ export interface ResolvedSong {
   chords: string[];
   detectedKey: ReturnType<typeof detectKey>;
   sourceKey?: string;
+  capo: number;
 }
 
 function norm(s: string): string {
@@ -65,6 +66,7 @@ export async function resolveSong(
     chords: parsed.chords,
     detectedKey: detectKey(parsed.chords),
     sourceKey: song.key,
+    capo: song.capo ?? 0,
   };
 }
 

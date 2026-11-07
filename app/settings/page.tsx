@@ -1,6 +1,6 @@
 "use client";
 
-import { useSettings } from "@/components/SettingsProvider";
+import { useSettings, FONT_SCALE_MAX, FONT_SCALE_MIN } from "@/components/SettingsProvider";
 
 export default function SettingsPage() {
   const { settings, update } = useSettings();
@@ -41,9 +41,10 @@ export default function SettingsPage() {
           <div className="flex items-center gap-3">
             <input
               type="range"
-              min={0.85}
-              max={1.8}
+              min={FONT_SCALE_MIN}
+              max={FONT_SCALE_MAX}
               step={0.05}
+              aria-label="Text size"
               value={settings.fontScale}
               onChange={(e) => update({ fontScale: Number(e.target.value) })}
               className="w-40 accent-accent"
@@ -58,7 +59,7 @@ export default function SettingsPage() {
           title="High-legibility font"
           desc="Extra letter spacing so similar glyphs (D / B / G / 8) are easy to tell apart."
         >
-          <Toggle on={settings.legibleFont} onChange={(v) => update({ legibleFont: v })} />
+          <Toggle label="High-legibility font" on={settings.legibleFont} onChange={(v) => update({ legibleFont: v })} />
         </Row>
 
         <Row
@@ -68,7 +69,8 @@ export default function SettingsPage() {
           <div className="flex items-center gap-1">
             <button
               onClick={() => update((s) => ({ defaultTranspose: Math.max(-11, s.defaultTranspose - 1) }))}
-              className="h-8 w-8 rounded bg-bg-elev-2 hover:bg-bg-elev"
+              aria-label="Default transpose down"
+              className="h-9 w-9 rounded bg-bg-elev-2 hover:bg-bg-elev"
             >
               −
             </button>
@@ -77,7 +79,8 @@ export default function SettingsPage() {
             </span>
             <button
               onClick={() => update((s) => ({ defaultTranspose: Math.min(11, s.defaultTranspose + 1) }))}
-              className="h-8 w-8 rounded bg-bg-elev-2 hover:bg-bg-elev"
+              aria-label="Default transpose up"
+              className="h-9 w-9 rounded bg-bg-elev-2 hover:bg-bg-elev"
             >
               +
             </button>
@@ -88,7 +91,7 @@ export default function SettingsPage() {
           title="Auto-advance setlist"
           desc="At the end of a song, automatically move to the next one in your setlist."
         >
-          <Toggle on={settings.autoAdvance} onChange={(v) => update({ autoAdvance: v })} />
+          <Toggle label="Auto-advance setlist" on={settings.autoAdvance} onChange={(v) => update({ autoAdvance: v })} />
         </Row>
 
         {settings.autoAdvance && (
@@ -98,6 +101,7 @@ export default function SettingsPage() {
                 type="range"
                 min={3}
                 max={30}
+                aria-label="Auto-advance delay"
                 value={settings.autoAdvanceSeconds}
                 onChange={(e) => update({ autoAdvanceSeconds: Number(e.target.value) })}
                 className="w-40 accent-accent"
@@ -113,7 +117,7 @@ export default function SettingsPage() {
           title="Chord diagrams"
           desc="Show a chord's shape (piano keys or guitar fingering) when you tap it."
         >
-          <Toggle on={settings.pianoVoicings} onChange={(v) => update({ pianoVoicings: v })} />
+          <Toggle label="Chord diagrams" on={settings.pianoVoicings} onChange={(v) => update({ pianoVoicings: v })} />
         </Row>
       </div>
     </main>
@@ -132,12 +136,13 @@ function Row({ title, desc, children }: { title: string; desc: string; children:
   );
 }
 
-function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
+function Toggle({ label, on, onChange }: { label: string; on: boolean; onChange: (v: boolean) => void }) {
   return (
     <button
       onClick={() => onChange(!on)}
       role="switch"
       aria-checked={on}
+      aria-label={label}
       className={`relative h-6 w-11 rounded-full transition ${on ? "bg-accent" : "bg-bg-elev-2"}`}
     >
       <span

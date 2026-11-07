@@ -14,7 +14,8 @@ Working MVP:
 
 - **Search** across providers (Ultimate Guitar today; pluggable for more).
   Every transcription of a song folds into one row that opens the best-rated
-  chart, with a `N versions` toggle for the rest.
+  chart, with a `N versions` toggle for the rest. Typing a title and artist
+  beats popularity, so "yesterday beatles" finds Yesterday first.
 - **Player** — chords laid over lyrics, section labels, transpose (± semitones
   with live key readout), font size, auto-scroll with speed control, and a
   piano-voicing popover on any chord.
@@ -49,28 +50,33 @@ Working MVP:
   jazzier) and a chord shimmer (`lib/music/jazzify.ts`, `components/use-jazzify.ts`,
   `lib/sparkle.ts`).
 - **Screen stays awake** — the Screen Wake Lock API keeps the display lit while
-  auto-scrolling in the player and for the whole of perform mode (re-acquired
-  automatically if you switch apps and come back; released on pause). The compact
+  a song is open, scrolling or not, and for the whole of perform mode (re-acquired
+  automatically if you switch apps and come back). The compact
   bar shows "☀ screen awake" while it holds. Works in iOS 16.4+ and the
   home-screen app (`components/use-wake-lock.ts`).
 - **Top chrome gets out of the way** — scroll down and the header + controls
   slide up off-screen; scroll up (or reach the top) and they slide back. A small
-  `⌄` tab at the top summons them any time. Paused while auto-scrolling, since the
-  compact bar is your pause button (`components/use-auto-hide.ts`).
+  `⌄` tab at the top summons them any time. Paused while auto-scrolling
+  (`components/use-auto-hide.ts`).
 - **Rocker steppers** — Transpose and Text are single `[ −  value  + ]` pills with
-  44px touch targets that tilt like a rocker switch toward the side you press;
+  large touch targets that tilt like a rocker switch toward the side you press;
   tap the value to reset (`components/Rocker.tsx`).
 - **Focus while scrolling** — starting auto-scroll hides the site header and
-  collapses the controls to one slim row (key · ❚❚ · speed) so the chords get
-  the screen; pausing brings everything back.
+  collapses the controls to one slim row (key · speed) so the chords get the
+  screen, without moving the line you're reading (`components/use-hold-position.ts`);
+  pausing brings everything back. It stops by itself at the end of the song,
+  unless auto-advance is about to carry on to the next one.
 - **Installable (PWA)** — a web manifest plus Apple standalone tags: add it to an
   iPhone home screen and it launches full-screen with no browser chrome,
   extending under the notch (`viewport-fit=cover`) with safe-area padding on the
-  top bars and bottom tap-zones. Icons are in `public/` (rendered from
+  top bars and bottom dock. Icons are in `public/` (rendered from
   `public/icon.svg`).
+- **Capo charts** — in piano mode a capo chart is shown in the song's original
+  key (a Capo 2 chart of G shapes reads in A), and saved keys and transitions
+  follow. Guitar mode keeps the shapes, labelled with what they sound like.
 - **Playable scale keyboard** (piano mode) — the current key shows a two-octave
   keyboard with every scale note highlighted and named; tap any key to hear the
-  pitch (Web Audio). In the player it sits in the header; in perform mode it's a
+  pitch (Web Audio). In the player it opens from `Scale of X` above the chords; in perform mode it's a
   sticky panel toggled from the key badge.
 - **Browse the homepage** — "Your artists" chips (baked in from your listening
   history — see `lib/artists.ts`), plus era/theme chips (Musicals, 50s–00s) that
@@ -90,9 +96,9 @@ Working MVP:
   song inline, prev/next + auto-advance, and an "end of set" screen. Tapping the
   key badge floats a **sticky, playable keyboard** of the current scale (notes
   highlighted + labelled; tap any key to hear it via Web Audio).
-- **Tap-to-scroll speed** — bottom-left `+ Speed`, bottom-right `− Speed`, and a
-  centre `↑ Back` that smoothly rewinds half a page (rAF animation, so it works
-  even where CSS smooth-scroll is a no-op).
+- **Scroll dock** — a floating bar in thumb reach with `−` / `+` speed (remembered
+  between songs), `↑` to smoothly rewind half a page (rAF animation, so it works
+  even where CSS smooth-scroll is a no-op) and play/pause (`components/ScrollDock.tsx`).
 - **On-disk song cache** — fetched charts are cached under `.songcache/`, so a
   song is never re-fetched from the provider.
 - **Settings** — text size, high-legibility font, default transpose (e.g. always

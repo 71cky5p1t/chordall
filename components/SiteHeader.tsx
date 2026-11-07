@@ -45,7 +45,7 @@ export function SiteHeader() {
           <Link
             href="/settings"
             aria-label="Settings"
-            className="rounded-md px-2.5 py-1.5 text-text-dim hover:bg-bg-elev hover:text-text"
+            className="flex h-9 w-9 items-center justify-center rounded-md text-text-dim hover:bg-bg-elev hover:text-text"
           >
             ⚙
           </Link>

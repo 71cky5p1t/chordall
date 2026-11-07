@@ -33,8 +33,9 @@ const SECTION_RE = /^\[([^\]]{1,40})\]$/;
  */
 function looksLikeAsciiTab(line: string): boolean {
   const s = line.replace(/\[\/?ch\]/g, "").replace(/\[\/?tab\]/g, "");
-  const dashes = (s.match(/-/g) || []).length;
-  if (dashes >= 5) return true;
+  // Doubled dashes, not just a count: sung syllables are hyphenated too
+  // ("sha-ha-sha-la-la-la-low") and those lines must still wrap.
+  if ((s.match(/-/g) || []).length >= 5 && /--/.test(s)) return true;
   // string line like "e|--0--", "G|-3-", "E|x-"
   if (/^\s*[eADGBadgb]\s*\|/.test(s) && s.includes("-")) return true;
   return false;

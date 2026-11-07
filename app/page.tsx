@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo, type FormEvent } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef, type FormEvent } from "react";
 import Link from "next/link";
 import type { SearchResult } from "@/lib/providers/types";
 import { groupSongs } from "@/lib/providers/group";
 import { FAVOURITE_ARTISTS, JYE_ARTISTS } from "@/lib/artists";
 import { useSettings } from "@/components/SettingsProvider";
 
+// Song links set prefetch={false}: a list on screen shouldn't scrape every song
+// in it, and prefetched pages' titles can land on whichever song you open.
 function songHref(r: { provider: string; id: string; url: string; title: string; artist: string }) {
   const p = new URLSearchParams({
     provider: r.provider,
@@ -52,6 +54,7 @@ export default function Home() {
   // State (not a ref): the save effect must not run until the recovered values
   // have actually rendered, or it clobbers storage with the empty initial state.
   const [hydrated, setHydrated] = useState(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
   useEffect(() => {
     try {
       const raw = window.sessionStorage.getItem(STORE);
@@ -63,7 +66,10 @@ export default function Home() {
         setErrors(saved.errors ?? []);
         setOpenSong(saved.openSong ?? null);
         if (saved.results && typeof saved.scrollY === "number") {
-          requestAnimationFrame(() => window.scrollTo(0, saved.scrollY!));
+          // Two frames: the restored list has to be laid out before it can be scrolled.
+          requestAnimationFrame(() =>
+            requestAnimationFrame(() => window.scrollTo(0, saved.scrollY!)),
+          );
         }
       }
     } catch {
@@ -74,30 +80,58 @@ export default function Home() {
   useEffect(() => {
     if (!hydrated) return;
     try {
-      window.sessionStorage.setItem(STORE, JSON.stringify({ q, label, results, errors, openSong, scrollY: window.scrollY }));
+      const prev = JSON.parse(window.sessionStorage.getItem(STORE) ?? "{}");
+      // Scroll is saved on the way out (below); this keeps it until then.
+      window.sessionStorage.setItem(STORE, JSON.stringify({ q, label, results, errors, openSong, scrollY: prev.scrollY }));
     } catch {
       /* ignore */
     }
   }, [hydrated, q, label, results, errors, openSong]);
   useEffect(() => {
-    // Save the scroll position as we leave (client nav unmounts before the URL changes).
-    const save = () => {
+    // Save the scroll position as we leave. Taken at the click: by the time this
+    // page unmounts, the router has already scrolled to the top of the next one.
+    let leavingY: number | null = null;
+    const noteClick = () => {
+      leavingY = window.scrollY;
+    };
+    const save = (y: number) => {
       try {
         const raw = window.sessionStorage.getItem(STORE);
         if (!raw) return;
         const saved = JSON.parse(raw);
-        saved.scrollY = window.scrollY;
+        saved.scrollY = y;
         window.sessionStorage.setItem(STORE, JSON.stringify(saved));
       } catch {
         /* ignore */
       }
     };
-    window.addEventListener("pagehide", save);
+    const onHide = () => save(window.scrollY);
+    document.addEventListener("click", noteClick, true);
+    window.addEventListener("pagehide", onHide);
     return () => {
-      save();
-      window.removeEventListener("pagehide", save);
+      if (leavingY !== null) save(leavingY);
+      document.removeEventListener("click", noteClick, true);
+      window.removeEventListener("pagehide", onHide);
     };
   }, []);
+
+  // Land ready to type on a computer. On a phone that would throw the keyboard
+  // over the artist chips before anyone's asked for it.
+  useEffect(() => {
+    if (!hydrated || results) return;
+    if (window.matchMedia("(hover: hover)").matches) inputRef.current?.focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated]);
+
+  // Only the newest search or browse may show: a slow earlier one mustn't land
+  // on top of it.
+  const inFlight = useRef<AbortController | null>(null);
+  const startRequest = () => {
+    inFlight.current?.abort();
+    const ctrl = new AbortController();
+    inFlight.current = ctrl;
+    return ctrl;
+  };
 
   const songs = useMemo(() => groupSongs(results ?? []), [results]);
 
@@ -107,6 +141,7 @@ export default function Home() {
 
   const runSearch = useCallback(async (query: string) => {
     if (!query.trim()) return;
+    const ctrl = startRequest();
     setLoading(true);
     setErr(null);
     setResults(null);
@@ -114,20 +149,22 @@ export default function Home() {
     setBusyCat(null);
     setLabel(`Results for “${query.trim()}”`);
     try {
-      const res = await fetch(`/api/search?q=${encodeURIComponent(query.trim())}`);
+      const res = await fetch(`/api/search?q=${encodeURIComponent(query.trim())}`, { signal: ctrl.signal });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "search failed");
       setResults(data.results);
       setErrors(data.errors ?? []);
     } catch (e) {
+      if (ctrl.signal.aborted) return;
       setErr(String(e instanceof Error ? e.message : e));
     } finally {
-      setLoading(false);
+      if (inFlight.current === ctrl) setLoading(false);
     }
   }, []);
 
   const onSearch = (e: FormEvent) => {
     e.preventDefault();
+    inputRef.current?.blur(); // put the phone keyboard away so the results show
     runSearch(q);
   };
 
@@ -137,6 +174,7 @@ export default function Home() {
   };
 
   const onCategory = async (id: string, catLabel: string) => {
+    const ctrl = startRequest();
     setBusyCat(id);
     setErr(null);
     setResults(null);
@@ -146,16 +184,18 @@ export default function Home() {
     try {
       const res = await fetch(
         `/api/browse?category=${encodeURIComponent(id)}${isJye ? "&allowCountry=1" : ""}`,
+        { signal: ctrl.signal },
       );
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "couldn’t load category");
       setResults(data.items);
       setErrors([]);
     } catch (e) {
+      if (ctrl.signal.aborted) return;
       setErr(String(e instanceof Error ? e.message : e));
       setLabel(null);
     } finally {
-      setBusyCat(null);
+      if (inFlight.current === ctrl) setBusyCat(null);
     }
   };
 
@@ -178,16 +218,16 @@ export default function Home() {
 
       <form onSubmit={onSearch} className="mx-auto flex max-w-xl gap-2">
         <input
+          ref={inputRef}
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search a song or artist…"
-          autoFocus
-          className="flex-1 rounded-xl border border-border bg-bg-elev px-4 py-3 text-base outline-none placeholder:text-text-faint focus:border-accent"
+          enterKeyHint="search"
+          className="min-w-0 flex-1 rounded-xl border border-border bg-bg-elev px-4 py-3 text-base outline-none placeholder:text-text-faint focus:border-accent"
         />
         <button
           type="submit"
-          disabled={loading}
-          className="rounded-xl bg-accent px-5 py-3 font-semibold text-bg transition hover:brightness-110 disabled:opacity-60"
+          className="rounded-xl bg-accent px-5 py-3 font-semibold text-bg transition hover:brightness-110"
         >
           {loading ? "…" : "Search"}
         </button>
@@ -278,6 +318,7 @@ export default function Home() {
             <button
               onClick={() => {
                 setResults(null);
+                setOpenSong(null);
                 setLabel(null);
                 setErr(null);
               }}
@@ -297,6 +338,7 @@ export default function Home() {
                     <div className="flex items-stretch">
                       <Link
                         href={songHref(best)}
+                        prefetch={false}
                         className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 transition hover:bg-bg-elev-2"
                       >
                         <div className="min-w-0 flex-1">
@@ -334,6 +376,7 @@ export default function Home() {
                           <Link
                             key={v.id}
                             href={songHref(v)}
+                            prefetch={false}
                             className="rounded-lg border border-border px-3 py-2 text-xs text-text-dim tabular-nums transition hover:border-accent hover:text-accent"
                           >
                             {[

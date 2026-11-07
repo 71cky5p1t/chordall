@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { resolveByQuery } from "@/lib/resolve-song";
-import { MODEL, createLowEffort } from "@/lib/ai";
+import { MODEL, createLowEffort, aiErrorText } from "@/lib/ai";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
       err.status === 404 ? ` (model "${MODEL}" not found / no access)` :
       err.status === 429 ? " (rate limited)" : "";
     return NextResponse.json(
-      { error: `Claude request failed${hint}: ${err.message ?? String(e)}`, model: MODEL, status: err.status ?? null },
+      { error: `Claude request failed${hint}: ${aiErrorText(e)}`, model: MODEL, status: err.status ?? null },
       { status: 424 },
     );
   }

@@ -56,7 +56,12 @@ export interface ChordProvider {
 }
 
 export class ProviderError extends Error {
-  constructor(message: string, readonly provider: string, readonly cause?: unknown) {
+  constructor(
+    message: string,
+    readonly provider: string,
+    readonly cause?: unknown,
+    readonly status?: number,
+  ) {
     super(message);
     this.name = "ProviderError";
   }

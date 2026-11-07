@@ -1,14 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import Link from "next/link";
 import { useSetlist } from "@/components/SetlistProvider";
 import { useSettings } from "@/components/SettingsProvider";
 import { transitionBetweenSongs } from "@/lib/music/transition";
-import { transposeChord } from "@/lib/music/chords";
-import { noteName, flatKey } from "@/lib/music/key";
+import { playedChords, playedKeyLabel } from "@/lib/music/capo";
 import type { SetlistItem } from "@/lib/setlist-types";
 import { ChordDiagram } from "@/components/ChordDiagram";
+import { UndoBar } from "@/components/UndoBar";
 
 function songHref(it: SetlistItem) {
   const p = new URLSearchParams({
@@ -21,21 +21,16 @@ function songHref(it: SetlistItem) {
   return `/song?${p.toString()}`;
 }
 
-function playedKeyLabel(item: SetlistItem, dt: number): string | null {
-  if (!item.detectedKey) return null;
-  const pc = ((item.detectedKey.tonicPc + dt) % 12 + 12) % 12;
-  return `${noteName(pc, flatKey(pc, item.detectedKey.mode))}${item.detectedKey.mode === "minor" ? "m" : ""}`;
-}
-
 export default function SetlistPage() {
-  const { items, add, remove, move, clear } = useSetlist();
+  const { items, add, remove, move, clear, restore, ready } = useSetlist();
   const { settings } = useSettings();
   const dt = settings.defaultTranspose;
-  const playChords = (chords: string[]) => chords.map((c) => transposeChord(c, dt, false));
   const [mood, setMood] = useState("");
   const [generating, setGenerating] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiNote, setAiNote] = useState<string | null>(null);
+  const [undo, setUndo] = useState<{ message: string; items: SetlistItem[] } | null>(null);
+  const dismissUndo = useCallback(() => setUndo(null), []);
 
   const generate = async () => {
     const m = mood.trim();
@@ -67,8 +62,8 @@ export default function SetlistPage() {
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-8">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold tracking-tight">Setlist</h1>
           <p className="text-sm text-text-dim">
             Ordered songs with a bridge progression to glide between each one.
@@ -83,8 +78,11 @@ export default function SetlistPage() {
               ▶ Perform
             </Link>
             <button
-              onClick={clear}
-              className="text-sm text-text-faint underline hover:text-danger"
+              onClick={() => {
+                setUndo({ message: "Setlist cleared", items });
+                clear();
+              }}
+              className="px-1 py-2 text-sm text-text-faint underline hover:text-danger"
             >
               Clear
             </button>
@@ -101,7 +99,7 @@ export default function SetlistPage() {
             onChange={(e) => setMood(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && generate()}
             placeholder="e.g. cosy rainy Sunday, or 90s singalong bangers"
-            className="min-w-0 flex-1 rounded-lg border border-border bg-bg-elev px-3 py-2 text-sm outline-none placeholder:text-text-faint focus:border-accent-2"
+            className="min-w-0 flex-1 rounded-lg border border-border bg-bg-elev px-3 py-2 text-base outline-none placeholder:text-text-faint focus:border-accent-2"
           />
           <button
             onClick={generate}
@@ -118,7 +116,7 @@ export default function SetlistPage() {
         </p>
       </div>
 
-      {items.length === 0 && (
+      {ready && items.length === 0 && (
         <div className="rounded-xl border border-dashed border-border px-6 py-12 text-center text-text-dim">
           Your setlist is empty. Open a song and hit{" "}
           <span className="text-accent">+ Add to setlist</span>.
@@ -134,16 +132,19 @@ export default function SetlistPage() {
         {items.map((it, i) => {
           const next = items[i + 1];
           const transition = next
-            ? transitionBetweenSongs(playChords(it.chords), playChords(next.chords))
+            ? transitionBetweenSongs(
+                playedChords(it, dt, settings.instrument),
+                playedChords(next, dt, settings.instrument),
+              )
             : null;
-          const keyLabel = playedKeyLabel(it, dt);
+          const keyLabel = playedKeyLabel(it, dt, settings.instrument);
           return (
             <li key={it.uid}>
               <div className="flex items-center gap-3 rounded-xl border border-border bg-bg-elev px-4 py-3">
                 <span className="font-mono text-sm text-text-faint tabular-nums">
                   {i + 1}
                 </span>
-                <Link href={songHref(it)} className="min-w-0 flex-1">
+                <Link href={songHref(it)} prefetch={false} className="min-w-0 flex-1">
                   <div className="truncate font-medium">{it.title}</div>
                   <div className="truncate text-sm text-text-dim">
                     {it.artist}
@@ -154,7 +155,7 @@ export default function SetlistPage() {
                   <button
                     onClick={() => move(it.uid, -1)}
                     disabled={i === 0}
-                    className="h-7 w-7 rounded bg-bg-elev-2 hover:bg-bg-elev disabled:opacity-30"
+                    className="h-9 w-9 rounded bg-bg-elev-2 hover:bg-bg-elev disabled:opacity-30"
                     aria-label="move up"
                   >
                     ↑
@@ -162,14 +163,17 @@ export default function SetlistPage() {
                   <button
                     onClick={() => move(it.uid, 1)}
                     disabled={i === items.length - 1}
-                    className="h-7 w-7 rounded bg-bg-elev-2 hover:bg-bg-elev disabled:opacity-30"
+                    className="h-9 w-9 rounded bg-bg-elev-2 hover:bg-bg-elev disabled:opacity-30"
                     aria-label="move down"
                   >
                     ↓
                   </button>
                   <button
-                    onClick={() => remove(it.uid)}
-                    className="h-7 w-7 rounded bg-bg-elev-2 text-text-dim hover:bg-danger hover:text-bg"
+                    onClick={() => {
+                      setUndo({ message: `Removed ${it.title}`, items });
+                      remove(it.uid);
+                    }}
+                    className="h-9 w-9 rounded bg-bg-elev-2 text-text-dim hover:bg-danger hover:text-bg"
                     aria-label="remove"
                   >
                     ✕
@@ -213,6 +217,8 @@ export default function SetlistPage() {
           );
         })}
       </ol>
+
+      {undo && <UndoBar message={undo.message} onUndo={() => restore(undo.items)} onDone={dismissUndo} />}
     </main>
   );
 }

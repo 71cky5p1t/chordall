@@ -27,7 +27,7 @@ async function getHtml(url: string, signal?: AbortSignal): Promise<string> {
     },
   });
   if (!res.ok) {
-    throw new ProviderError(`UG responded ${res.status}`, "ultimate-guitar");
+    throw new ProviderError(`UG responded ${res.status}`, "ultimate-guitar", undefined, res.status);
   }
   return res.text();
 }
@@ -51,6 +51,25 @@ const NO_CONTENT_TYPES = new Set(["Pro", "Power", "Official", "Video"]);
 
 // UG's `type` filter for chord charts.
 const CHORDS_FILTER = "300";
+
+const words = (s: string) => s.toLowerCase().replace(/['’]/g, "").match(/[\p{L}\p{N}]+/gu) ?? [];
+
+/**
+ * Typed as "title artist": "yesterday beatles" means Yesterday, not the band's
+ * biggest hit. Needs both halves, or searching "elton john" would lead with
+ * songs merely called Elton John.
+ */
+function titleAndArtistTyped(r: SearchResult, typed: Set<string>): boolean {
+  const title = new Set(words(r.title));
+  const artist = new Set(words(r.artist));
+  const rest = [...typed].filter((w) => !title.has(w));
+  return (
+    title.size > 0 &&
+    [...title].every((w) => typed.has(w)) &&
+    rest.length > 0 &&
+    rest.every((w) => artist.has(w))
+  );
+}
 
 /** One page of raw search rows, plus how many pages UG says there are. */
 async function searchPage(
@@ -98,8 +117,16 @@ export const ultimateGuitar: ChordProvider = {
   async search(query, signal, options) {
     let rows = await searchChordRows(query, options?.pages ?? 1, signal);
     // Songs with no chord chart (tab-only instrumentals) still deserve a result.
-    if (rows.length === 0) rows = (await searchPage(query, 1, null, signal)).rows;
+    if (rows.length === 0) {
+      try {
+        rows = (await searchPage(query, 1, null, signal)).rows;
+      } catch (e) {
+        if (e instanceof ProviderError && e.status === 404) return []; // UG's "no matches"
+        throw e;
+      }
+    }
 
+    const typed = new Set(words(query));
     const unique = new Map(rows.filter((r) => r?.id).map((r) => [r.id, r]));
     return [...unique.values()]
       .filter((r) => r.song_name && r.marketing_type !== "Pro" && !NO_CONTENT_TYPES.has(r.type))
@@ -117,11 +144,15 @@ export const ultimateGuitar: ChordProvider = {
           part: r.part || undefined,
         }),
       )
-      // Chords first (best for our chords-over-lyrics view), then by rating*votes.
+      // Chords first (best for our chords-over-lyrics view), then the song you
+      // named, then by rating*votes.
       .sort((a, b) => {
         const ca = CHORD_TYPES.has(a.type ?? "") ? 1 : 0;
         const cb = CHORD_TYPES.has(b.type ?? "") ? 1 : 0;
         if (ca !== cb) return cb - ca;
+        const ta = titleAndArtistTyped(a, typed) ? 1 : 0;
+        const tb = titleAndArtistTyped(b, typed) ? 1 : 0;
+        if (ta !== tb) return tb - ta;
         return (b.votes ?? 0) * (b.rating ?? 0) - (a.votes ?? 0) * (a.rating ?? 0);
       });
   },

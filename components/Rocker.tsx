@@ -9,12 +9,15 @@ import { useRef, useState } from "react";
  */
 export function Rocker({
   label,
+  tag,
   value,
   onDown,
   onUp,
   onReset,
 }: {
   label?: string;
+  /** Short name inside the pill, for phones where the outside label is hidden. */
+  tag?: string;
   value: string;
   onDown: () => void;
   onUp: () => void;
@@ -32,7 +35,7 @@ export function Rocker({
 
   return (
     <div className="flex items-center gap-1.5">
-      {label && <span className="text-text-faint">{label}</span>}
+      {label && <span className="hidden text-text-faint sm:inline">{label}</span>}
       <div
         className={`rocker ${tilt === "l" ? "rocker-l" : tilt === "r" ? "rocker-r" : ""}`}
         role="group"
@@ -48,6 +51,7 @@ export function Rocker({
           disabled={!onReset}
           title={onReset ? "tap to reset" : undefined}
         >
+          {tag && <span className="rocker-tag">{tag}</span>}
           {value}
         </button>
         <button type="button" className="rocker-side" onClick={() => press("r", onUp)} aria-label={`${label ?? "value"} up`}>

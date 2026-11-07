@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { ParsedSong, Segment } from "@/lib/chordpro/parse";
 import { transposeChord } from "@/lib/music/chords";
 import { ChordDiagram } from "./ChordDiagram";
@@ -37,8 +37,63 @@ function lineToCells(segments: Segment[]): Cell[] {
   return cells;
 }
 
+const EDGE = 8; // px kept clear of the screen edge
+const DOCK = 76; // the floating scroll controls
+
+/** A chord's diagram, nudged so it never runs off the screen. */
+function ChordPopover({ chord, preferFlat }: { chord: string; preferFlat: boolean }) {
+  const ref = useRef<HTMLSpanElement | null>(null);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const place = () => {
+      el.style.transform = "";
+      el.style.top = "100%";
+      el.style.bottom = "";
+      const box = el.getBoundingClientRect();
+      const over = box.right - (document.documentElement.clientWidth - EDGE);
+      const dx = over > 0 ? -over : 0;
+      el.style.transform = `translateX(${dx}px)`;
+      if (box.bottom > window.innerHeight - DOCK) {
+        el.style.top = "auto";
+        el.style.bottom = "100%";
+      }
+    };
+    place();
+    // Guitar shapes load lazily, so the box can change size after it opens.
+    const ro = new ResizeObserver(place);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [chord]);
+
+  return (
+    <span
+      ref={ref}
+      data-chord-popover
+      style={{ position: "absolute", top: "100%", left: 0, zIndex: 50 }}
+      className="mt-1 rounded-lg border border-border-strong bg-bg-elev-2 p-2 shadow-xl"
+    >
+      <span className="mb-1 block font-sans text-xs font-semibold text-accent">{chord}</span>
+      <ChordDiagram chord={chord} preferFlat={preferFlat} />
+    </span>
+  );
+}
+
 export function ChordSheet({ song, semitones, preferFlat, fontSize, showPiano, legible }: Props) {
   const [openId, setOpenId] = useState<string | null>(null);
+
+  // A tap anywhere else closes the diagram; tapping a chord is handled below.
+  useEffect(() => {
+    if (openId === null) return;
+    const close = (e: PointerEvent) => {
+      const t = e.target as Element | null;
+      // :not(:empty): words without a chord still have a blank chord slot above them.
+      if (!t?.closest?.(".chord:not(:empty), [data-chord-popover]")) setOpenId(null);
+    };
+    document.addEventListener("pointerdown", close);
+    return () => document.removeEventListener("pointerdown", close);
+  }, [openId]);
 
   return (
     <div className={legible ? "sheet legible" : "sheet"} style={{ fontSize }}>
@@ -71,8 +126,11 @@ export function ChordSheet({ song, semitones, preferFlat, fontSize, showPiano, l
             }
 
             const cells = lineToCells(line.segments);
+            // Instrumental lines have no lyric row to sit on: without this the
+            // last chord, which has no spaces after it, drops below the others.
+            const chordsOnly = cells.every((c) => !c.text.trim());
             return (
-              <div key={li} className="line">
+              <div key={li} className={chordsOnly ? "line chords-only" : "line"}>
                 {cells.map((cell, gi) => {
                   const id = `${si}-${li}-${gi}`;
                   const chord = cell.chord
@@ -92,15 +150,7 @@ export function ChordSheet({ song, semitones, preferFlat, fontSize, showPiano, l
                       </span>
                       <span className="lyric">{cell.text}</span>
                       {chord && showPiano && openId === id && (
-                        <span
-                          style={{ position: "absolute", top: "100%", left: 0, zIndex: 50 }}
-                          className="mt-1 rounded-lg border border-border-strong bg-bg-elev-2 p-2 shadow-xl"
-                        >
-                          <span className="mb-1 block font-sans text-xs font-semibold text-accent">
-                            {chord}
-                          </span>
-                          <ChordDiagram chord={chord} preferFlat={preferFlat} />
-                        </span>
+                        <ChordPopover chord={chord} preferFlat={preferFlat} />
                       )}
                     </span>
                   );

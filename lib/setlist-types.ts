@@ -11,4 +11,6 @@ export interface SetlistItem {
   chords: string[];
   detectedKey: DetectedKey | null;
   sourceKey?: string;
+  /** Capo fret the chords are shaped for; 0 for none, unset on older saves. */
+  capo?: number;
 }

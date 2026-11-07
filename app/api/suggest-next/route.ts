@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { resolveByQuery } from "@/lib/resolve-song";
-import { MODEL, createLowEffort } from "@/lib/ai";
+import { MODEL, createLowEffort, aiErrorText } from "@/lib/ai";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     const err = e as { status?: number; message?: string; name?: string };
     console.error("[chordall ai] suggest-next failed", { model: MODEL, status: err.status, name: err.name, message: err.message });
-    return NextResponse.json({ error: `Claude request failed: ${err.message ?? String(e)}`, model: MODEL }, { status: 424 });
+    return NextResponse.json({ error: `Claude request failed: ${aiErrorText(e)}`, model: MODEL }, { status: 424 });
   }
 
   // Drop anything the client already showed (case-insensitive title match), then

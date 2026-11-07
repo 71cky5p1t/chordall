@@ -36,6 +36,7 @@
 
 html {
   color-scheme: dark;
+  touch-action: manipulation; /* no double-tap zoom when hammering steppers */
   /* Never let the document grow wider than the screen: a wider layout is what
      lets iOS pinch-zoom out (and stay there) with the sticky bars looking
      narrow. On <html> this propagates to the viewport without turning <body>
@@ -73,6 +74,8 @@ body {
   display: inline-flex;
   flex-direction: column;
   vertical-align: bottom;
+  min-width: 0;
+  max-width: 100%;
 }
 .sheet .cell .chord {
   font-family: var(--sheet-chord-font);
@@ -89,8 +92,13 @@ body {
   letter-spacing: 0.01em;
 }
 .sheet .cell .chord:empty { padding-right: 0; }
+.sheet .chords-only { row-gap: 0.1em; }
+.sheet .chords-only .lyric { display: none; }
+.sheet .chords-only .chord { padding-right: 1.4ch; }
 .sheet .cell .chord:hover { text-decoration: underline; text-underline-offset: 3px; }
-.sheet .cell .lyric { white-space: pre; line-height: 1.4; }
+/* break-spaces keeps the gaps between words; a URL or rule longer than the
+   screen wraps rather than being cut off by the page's overflow clip. */
+.sheet .cell .lyric { white-space: break-spaces; overflow-wrap: anywhere; line-height: 1.4; }
 .sheet section { margin-bottom: 1.6rem; }
 
 /* High-legibility mode: extra tracking so D / B / G / 8 read clearly. */
@@ -108,6 +116,9 @@ body {
   max-width: 100%;
 }
 .sheet .tab-line .chord { color: var(--chord); font-weight: 700; }
+
+/* Hidden except where a phone drops the stepper's outside label. */
+.rocker-tag { display: none; }
 
 /* iPhone standalone (home-screen) mode: respect the notch and home indicator. */
 .safe-top { padding-top: env(safe-area-inset-top); }
@@ -165,7 +176,9 @@ body[data-playing="1"] .site-header { display: none; }
 body[data-chrome="hidden"] .site-header { transform: translateY(-100%); }
 .topbar { transition: transform 0.28s ease; will-change: transform; }
 .topbar-hidden { transform: translateY(-100%); }
-.topbar-hidden-under { transform: translateY(calc(-100% - 57px)); } /* sits under the 57px site header */
+/* Sits under the 57px site header, which grows by the notch when installed. */
+.topbar-under-header { top: calc(57px + env(safe-area-inset-top)); }
+.topbar-hidden-under { transform: translateY(calc(-100% - 57px - env(safe-area-inset-top))); }
 .chrome-reveal {
   position: fixed;
   top: calc(env(safe-area-inset-top) + 6px);
@@ -181,6 +194,20 @@ body[data-chrome="hidden"] .site-header { transform: translateY(-100%); }
   line-height: 1;
   backdrop-filter: blur(6px);
 }
+
+/* Bottom scroll dock: speed, rewind, play/pause, within thumb reach. */
+.dock-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+.dock-btn:active { background: rgba(255, 255, 255, 0.1); }
 
 /* Rocker stepper: [ −  value  + ] that tilts toward the pressed side. */
 .rocker {
@@ -217,6 +244,13 @@ body[data-chrome="hidden"] .site-header { transform: translateY(-100%); }
 .rocker-val:disabled { cursor: default; }
 .rocker-l { transform: perspective(500px) rotateY(-16deg) rotate(-2.5deg); }
 .rocker-r { transform: perspective(500px) rotateY(16deg) rotate(2.5deg); }
+/* Two steppers and the key share one row on a phone. */
+@media (max-width: 639px) {
+  .rocker { height: 36px; border-radius: 10px; }
+  .rocker-side { width: 34px; font-size: 20px; }
+  .rocker-val { min-width: 44px; padding: 0 5px; font-size: 13px; }
+  .rocker-tag { display: inline; margin-right: 3px; font-family: var(--font-sans); font-size: 10px; font-weight: 500; color: var(--text-faint); }
+}
 @media (prefers-reduced-motion: reduce) {
   .rocker-l, .rocker-r { transform: perspective(500px); }
   .site-header, .topbar { transition: none; }

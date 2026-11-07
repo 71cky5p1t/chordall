@@ -18,16 +18,31 @@ export interface Settings {
   autoAdvanceSeconds: number;
   defaultTranspose: number; // auto-applied semitone shift on load (e.g. -3)
   pianoVoicings: boolean; // show chord diagrams when tapped
+  scrollSpeed: number; // auto-scroll px/sec, kept between songs
+  showScale: boolean; // scale keyboard open above the chords (piano)
+}
+
+export const DEFAULT_FONT_SCALE = 1.15;
+export const FONT_SCALE_MIN = 0.7;
+export const FONT_SCALE_MAX = 2.4;
+export const BASE_FONT_PX = 17;
+export const SPEED_MIN = 8;
+export const SPEED_MAX = 90;
+
+export function clamp(n: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, n));
 }
 
 const DEFAULTS: Settings = {
   instrument: "piano",
-  fontScale: 1.15,
+  fontScale: DEFAULT_FONT_SCALE,
   legibleFont: true,
   autoAdvance: false,
   autoAdvanceSeconds: 10,
   defaultTranspose: 0,
   pianoVoicings: true,
+  scrollSpeed: 28,
+  showScale: false,
 };
 
 const KEY = "chordall.settings.v1";

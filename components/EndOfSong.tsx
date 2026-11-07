@@ -19,14 +19,20 @@ export function EndOfSong({
   label = "Next song →",
 }: {
   next: SetlistItem;
-  transition: Transition;
+  /** Null when no bridge can be worked out (a song with no chords). */
+  transition: Transition | null;
   autoAdvance: boolean;
   seconds: number;
-  onGo: () => void;
+  /** `auto` is true when the countdown moved on rather than a tap. */
+  onGo: (auto: boolean) => void;
   label?: string;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
   const [countdown, setCountdown] = useState<number | null>(null);
+  // `onGo` is a new function on every parent render. Keeping it out of the timer
+  // effect stops the move itself re-firing it, which skipped a song.
+  const go = useRef(onGo);
+  go.current = onGo;
 
   useEffect(() => {
     if (!autoAdvance) return;
@@ -45,39 +51,43 @@ export function EndOfSong({
   useEffect(() => {
     if (countdown === null) return;
     if (countdown <= 0) {
-      onGo();
+      go.current(true);
       return;
     }
     const t = setTimeout(() => setCountdown((c) => (c === null ? null : c - 1)), 1000);
     return () => clearTimeout(t);
-  }, [countdown, onGo]);
+  }, [countdown]);
 
   return (
     <div ref={ref} className="mt-10 rounded-2xl border border-accent-3/40 bg-accent-3/5 p-5">
       <div className="text-xs font-semibold uppercase tracking-wider text-accent-3">
-        ⇄ Transition into the next song
+        {transition ? "⇄ Transition into the next song" : "Next song"}
       </div>
       <div className="mt-1 text-lg font-semibold">
         {next.title} <span className="text-text-dim">— {next.artist}</span>
       </div>
-      <div className="mt-3 flex flex-wrap items-end gap-3">
-        {transition.steps.map((s, k) => (
-          <div key={k} className="flex flex-col items-start gap-1">
-            <span
-              className={`rounded-md px-2 py-1 font-mono text-base font-bold ${
-                k === transition.steps.length - 1 ? "bg-accent-3 text-bg" : "bg-bg-elev-2 text-accent"
-              }`}
-            >
-              {s.chord}
-            </span>
-            <ChordDiagram chord={s.chord} />
-            <span className="max-w-[9rem] text-[10px] leading-tight text-text-faint">{s.role}</span>
+      {transition && (
+        <>
+          <div className="mt-3 flex flex-wrap items-end gap-3">
+            {transition.steps.map((s, k) => (
+              <div key={k} className="flex flex-col items-start gap-1">
+                <span
+                  className={`rounded-md px-2 py-1 font-mono text-base font-bold ${
+                    k === transition.steps.length - 1 ? "bg-accent-3 text-bg" : "bg-bg-elev-2 text-accent"
+                  }`}
+                >
+                  {s.chord}
+                </span>
+                <ChordDiagram chord={s.chord} />
+                <span className="max-w-[9rem] text-[10px] leading-tight text-text-faint">{s.role}</span>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
-      <p className="mt-3 text-sm text-text-dim">{transition.description}</p>
+          <p className="mt-3 text-sm text-text-dim">{transition.description}</p>
+        </>
+      )}
       <div className="mt-4 flex items-center gap-3">
-        <button onClick={onGo} className="rounded-lg bg-accent-3 px-4 py-2 font-semibold text-bg hover:brightness-110">
+        <button onClick={() => onGo(false)} className="rounded-lg bg-accent-3 px-4 py-2 font-semibold text-bg hover:brightness-110">
           {label}
         </button>
         {countdown !== null && (

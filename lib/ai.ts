@@ -17,6 +17,13 @@ export function supportsEffort(model: string): boolean {
 // Non-streaming params so the overload resolves to a plain Message (not a Stream).
 type CreateParams = Anthropic.MessageCreateParamsNonStreaming;
 
+/** The API's own sentence, not the "401 {json}" blob the SDK puts in `message`. */
+export function aiErrorText(e: unknown): string {
+  const raw = String((e as { message?: string })?.message ?? e);
+  const inner = /"message"\s*:\s*"([^"]+)"/.exec(raw)?.[1];
+  return inner ?? raw;
+}
+
 /**
  * messages.create with low effort where supported. If the API still rejects
  * `effort` (an unknown/new model), retry once without it rather than failing.

@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { backfillCapo } from "@/lib/backfill-capo";
 import type { SetlistItem } from "@/lib/setlist-types";
 
 const KEY = "chordall.setlist.v1";
@@ -18,6 +19,10 @@ interface SetlistCtx {
   remove: (uid: string) => void;
   move: (uid: string, dir: -1 | 1) => void;
   clear: () => void;
+  /** Put back a previous list (undo). */
+  restore: (items: SetlistItem[]) => void;
+  /** False until saved data has loaded, so "empty" states don't flash. */
+  ready: boolean;
   has: (provider: string, songId: string) => boolean;
 }
 
@@ -27,7 +32,9 @@ function loadInitial(): SetlistItem[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = window.localStorage.getItem(KEY);
-    return raw ? (JSON.parse(raw) as SetlistItem[]) : [];
+    const parsed: unknown = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(parsed)) return [];
+    return (parsed as SetlistItem[]).filter((p) => p?.uid && p.songId && Array.isArray(p.chords));
   } catch {
     return [];
   }
@@ -50,6 +57,17 @@ export function SetlistProvider({ children }: { children: ReactNode }) {
       /* storage may be unavailable (private mode) — ignore */
     }
   }, [items, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    const ctrl = new AbortController();
+    backfillCapo(items, ctrl.signal, (song, capo) =>
+      setItems((prev) => prev.map((p) => (p.uid === song.uid ? { ...p, capo } : p))),
+    );
+    return () => ctrl.abort();
+    // Once, for what was saved: anything added from now on knows its capo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated]);
 
   const add: SetlistCtx["add"] = (item) => {
     setItems((prev) => {
@@ -75,11 +93,12 @@ export function SetlistProvider({ children }: { children: ReactNode }) {
     });
 
   const clear = () => setItems([]);
+  const restore: SetlistCtx["restore"] = (prev) => setItems(prev);
   const has: SetlistCtx["has"] = (provider, songId) =>
     items.some((p) => p.provider === provider && p.songId === songId);
 
   return (
-    <Ctx.Provider value={{ items, add, remove, move, clear, has }}>
+    <Ctx.Provider value={{ items, add, remove, move, clear, restore, ready: hydrated, has }}>
       {children}
     </Ctx.Provider>
   );
