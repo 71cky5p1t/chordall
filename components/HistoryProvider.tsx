@@ -18,6 +18,8 @@ export interface PlayedSong extends Omit<SetlistItem, "uid"> {
   plays: number;
   firstAt: number;
   lastAt: number;
+  /** Mood categories from Claude, once it has sorted this song. */
+  moods?: string[];
 }
 
 export interface PastSearch {
@@ -43,6 +45,7 @@ interface Ctx extends History {
   noteSearch: (q: string) => void;
   removeSong: (key: string) => void;
   removeSearch: (q: string) => void;
+  setMoods: (moods: Record<string, string[]>) => void;
   clear: () => void;
   restore: (h: History) => void;
   ready: boolean;
@@ -100,6 +103,7 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
       const sameListen = prev && now - prev.lastAt < SAME_LISTEN_MS;
       const entry: PlayedSong = {
         ...song,
+        ...(prev?.moods ? { moods: prev.moods } : {}),
         key,
         plays: (prev?.plays ?? 0) + (sameListen ? 0 : 1),
         firstAt: prev?.firstAt ?? now,
@@ -137,6 +141,11 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
         listens: h.listens.filter((l) => l.key !== key),
       })),
     removeSearch: (q) => setHistory((h) => ({ ...h, searches: h.searches.filter((s) => s.q !== q) })),
+    setMoods: (moods) =>
+      setHistory((h) => ({
+        ...h,
+        songs: h.songs.map((s) => (moods[s.key] ? { ...s, moods: moods[s.key] } : s)),
+      })),
     clear: () => setHistory(EMPTY),
     restore: setHistory,
     ready: hydrated,

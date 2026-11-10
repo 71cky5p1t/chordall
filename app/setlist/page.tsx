@@ -6,7 +6,7 @@ import { useSetlist } from "@/components/SetlistProvider";
 import { useSettings } from "@/components/SettingsProvider";
 import { transitionBetweenSongs } from "@/lib/music/transition";
 import { playedChords, playedKeyLabel } from "@/lib/music/capo";
-import type { SetlistItem } from "@/lib/setlist-types";
+import type { SavedSetlist, SetlistItem } from "@/lib/setlist-types";
 import { ChordDiagram } from "@/components/ChordDiagram";
 import { UndoBar } from "@/components/UndoBar";
 
@@ -22,14 +22,17 @@ function songHref(it: SetlistItem) {
 }
 
 export default function SetlistPage() {
-  const { items, add, remove, move, clear, restore, ready } = useSetlist();
+  const { items, add, remove, move, clear, restore, ready, saved, archive, replaceWith, renameSaved, deleteSaved, restoreSaved } =
+    useSetlist();
+  const [naming, setNaming] = useState(false);
+  const [setName, setSetName] = useState("");
   const { settings } = useSettings();
   const dt = settings.defaultTranspose;
   const [mood, setMood] = useState("");
   const [generating, setGenerating] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiNote, setAiNote] = useState<string | null>(null);
-  const [undo, setUndo] = useState<{ message: string; items: SetlistItem[] } | null>(null);
+  const [undo, setUndo] = useState<{ message: string; items?: SetlistItem[]; saved?: SavedSetlist[] } | null>(null);
   const dismissUndo = useCallback(() => setUndo(null), []);
 
   const generate = async () => {
@@ -79,7 +82,17 @@ export default function SetlistPage() {
             </Link>
             <button
               onClick={() => {
-                setUndo({ message: "Setlist cleared", items });
+                setSetName("");
+                setNaming((n) => !n);
+              }}
+              aria-expanded={naming}
+              className="rounded-lg border border-border px-3 py-2 text-sm text-text-dim hover:text-text"
+            >
+              Save
+            </button>
+            <button
+              onClick={() => {
+                setUndo({ message: "Setlist cleared · kept in Past setlists", items });
                 clear();
               }}
               className="px-1 py-2 text-sm text-text-faint underline hover:text-danger"
@@ -89,6 +102,30 @@ export default function SetlistPage() {
           </div>
         )}
       </div>
+
+      {naming && items.length > 0 && (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            archive({ name: setName.trim() || undefined });
+            setNaming(false);
+            setUndo({ message: "Saved to Past setlists" });
+          }}
+          className="-mt-3 mb-6 flex gap-2"
+        >
+          <input
+            autoFocus
+            value={setName}
+            onChange={(e) => setSetName(e.target.value)}
+            placeholder="Name this set, e.g. Sunday at Mum’s"
+            enterKeyHint="done"
+            className="min-w-0 flex-1 rounded-lg border border-border bg-bg-elev px-3 py-2 text-base outline-none placeholder:text-text-faint focus:border-accent"
+          />
+          <button type="submit" className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-bg">
+            Save
+          </button>
+        </form>
+      )}
 
       {/* AI setlist generator */}
       <div className="mb-6 rounded-xl border border-accent-2/30 bg-accent-2/5 p-4">
@@ -218,7 +255,129 @@ export default function SetlistPage() {
         })}
       </ol>
 
-      {undo && <UndoBar message={undo.message} onUndo={() => restore(undo.items)} onDone={dismissUndo} />}
+      {ready && saved.length > 0 && (
+        <PastSetlists
+          saved={saved}
+          current={items}
+          onLoad={(s) => {
+            setUndo({ message: `Loaded ${s.name}`, items });
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            replaceWith(s.items.map(({ uid, ...song }) => song));
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+          onRename={renameSaved}
+          onDelete={(s) => {
+            setUndo({ message: `Deleted ${s.name}`, saved });
+            deleteSaved(s.id);
+          }}
+        />
+      )}
+
+      {undo && (
+        <UndoBar
+          message={undo.message}
+          onUndo={
+            undo.items
+              ? () => restore(undo.items!)
+              : undo.saved
+                ? () => restoreSaved(undo.saved!)
+                : undefined
+          }
+          onDone={dismissUndo}
+        />
+      )}
     </main>
+  );
+}
+
+function PastSetlists({
+  saved,
+  current,
+  onLoad,
+  onRename,
+  onDelete,
+}: {
+  saved: SavedSetlist[];
+  current: SetlistItem[];
+  onLoad: (s: SavedSetlist) => void;
+  onRename: (id: string, name: string) => void;
+  onDelete: (s: SavedSetlist) => void;
+}) {
+  const [editing, setEditing] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
+  const isCurrent = (s: SavedSetlist) =>
+    s.items.length === current.length && s.items.every((x, i) => x.songId === current[i].songId);
+  const day = (at: number) => new Date(at).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+
+  return (
+    <section className="mt-12">
+      <h2 className="mb-1 text-lg font-semibold">Past setlists</h2>
+      <p className="mb-3 text-sm text-text-dim">Every set you perform, clear or swap out is kept here.</p>
+      <ul className="space-y-2">
+        {saved.map((s) => (
+          <li key={s.id} className="rounded-xl border border-border bg-bg-elev px-4 py-3">
+            <div className="flex items-center gap-2">
+              {editing === s.id ? (
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    onRename(s.id, draft);
+                    setEditing(null);
+                  }}
+                  className="flex min-w-0 flex-1 gap-2"
+                >
+                  <input
+                    autoFocus
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    onBlur={() => {
+                      onRename(s.id, draft);
+                      setEditing(null);
+                    }}
+                    aria-label="Setlist name"
+                    enterKeyHint="done"
+                    className="min-w-0 flex-1 rounded-lg border border-accent bg-bg px-2 py-1 text-base outline-none"
+                  />
+                </form>
+              ) : (
+                <button
+                  onClick={() => {
+                    setDraft(s.named ? s.name : "");
+                    setEditing(s.id);
+                  }}
+                  title="Rename"
+                  className="min-w-0 flex-1 truncate text-left font-semibold hover:text-accent"
+                >
+                  {s.name}
+                  <span aria-hidden className="ml-1.5 text-xs font-normal text-text-faint">✎</span>
+                </button>
+              )}
+              {isCurrent(s) ? (
+                <span className="shrink-0 text-xs text-text-faint">current</span>
+              ) : (
+                <button
+                  onClick={() => onLoad(s)}
+                  className="h-9 shrink-0 rounded-lg border border-accent px-3 text-sm font-medium text-accent hover:bg-accent hover:text-bg"
+                >
+                  Load
+                </button>
+              )}
+              <button
+                onClick={() => onDelete(s)}
+                aria-label={`Delete ${s.name}`}
+                className="h-9 w-9 shrink-0 rounded bg-bg-elev-2 text-text-dim hover:bg-danger hover:text-bg"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="mt-0.5 text-xs text-text-faint">
+              {s.items.length} song{s.items.length === 1 ? "" : "s"}
+              {s.performedAt ? ` · performed ${day(s.performedAt)}` : ` · saved ${day(s.savedAt)}`}
+            </p>
+            <p className="mt-1 line-clamp-2 text-sm text-text-dim">{s.items.map((i) => i.title).join(" · ")}</p>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

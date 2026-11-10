@@ -41,7 +41,7 @@ interface SongResponse {
 const POSITION_KEY = "chordall.perform.position";
 
 export default function PerformPage() {
-  const { items, ready } = useSetlist();
+  const { items, ready, archive } = useSetlist();
   const { settings, update } = useSettings();
   const { notePlayed } = useHistory();
 
@@ -69,6 +69,15 @@ export default function PerformPage() {
   const content = useHoldPosition<HTMLElement>(playing);
 
   const current = items[idx];
+
+  // Every set performed is kept, so it can be found again later.
+  const archived = useRef(false);
+  useEffect(() => {
+    if (!ready || archived.current || items.length === 0) return;
+    archived.current = true;
+    archive({ performed: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready]);
 
   // Pick up where a reload left off (the setlist may have shrunk since).
   const restored = useRef(false);

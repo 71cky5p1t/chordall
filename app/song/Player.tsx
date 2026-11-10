@@ -34,6 +34,8 @@ import {
 } from "@/components/SettingsProvider";
 import { useFavourites } from "@/components/FavouritesProvider";
 import { useHistory } from "@/components/HistoryProvider";
+import { asSetlistSong, playedAfter } from "@/lib/history-insights";
+import { songKey } from "@/lib/providers/group";
 import type { SetlistItem } from "@/lib/setlist-types";
 
 interface SongResponse {
@@ -67,6 +69,13 @@ function currentKeyInfo(k: DetectedKey | null, semitones: number) {
   };
 }
 
+interface Suggestion {
+  item: SetlistItem;
+  t: Transition;
+  /** How often you've played this straight after the current song. */
+  times?: number;
+}
+
 // Lower rank = smoother musical transition, for suggesting the next song.
 const REL_RANK: Record<string, number> = {
   "same key": 0,
@@ -98,7 +107,7 @@ export function Player() {
   const { settings, update } = useSettings();
   const { add, has, items: setlistItems } = useSetlist();
   const { toggle: toggleFav, isFavourite, favourites } = useFavourites();
-  const { notePlayed } = useHistory();
+  const { notePlayed, listens, songs: playedSongs } = useHistory();
   const router = useRouter();
 
   const [data, setData] = useState<SongResponse | null>(null);
@@ -106,7 +115,7 @@ export function Player() {
   const [semitones, setSemitones] = useState(settings.defaultTranspose);
   const [playing, setPlaying] = useState(false);
   const [reloads, setReloads] = useState(0);
-  const [suggestions, setSuggestions] = useState<{ item: SetlistItem; t: Transition }[] | undefined>(undefined);
+  const [suggestions, setSuggestions] = useState<Suggestion[] | undefined>(undefined);
   const [suggestBusy, setSuggestBusy] = useState(false);
   const [suggestErr, setSuggestErr] = useState<string | null>(null);
   const shownTitles = useRef<string[]>([]);
@@ -254,21 +263,26 @@ export function Player() {
     ? `${noteName(keyInfo.tonicPc + capo, flatKey((keyInfo.tonicPc + capo) % 12, keyInfo.mode))}${keyInfo.mode === "minor" ? "m" : ""}`
     : null;
 
-  // Up to 6 options, ranked by how smoothly they follow the current song,
-  // drawn from favourites + the setlist (deduped, excluding this song).
+  // Up to 6 options: songs you've played straight after this one before come
+  // first, then favourites + the setlist ranked by how smoothly they follow it
+  // (deduped by song, excluding this one).
   const onSuggest = () => {
-    const seen = new Set<string>([`${provider}:${id}`]);
+    const after = playedAfter(songKey(title, artist), listens, playedSongs);
+    const times = new Map(after.map((c) => [c.to.key, c.times]));
+    const seen = new Set<string>([songKey(title, artist)]);
     const pool: Omit<SetlistItem, "uid">[] = [];
-    for (const f of [...favourites, ...setlistItems]) {
-      const k = `${f.provider}:${f.songId}`;
+    for (const f of [...after.map((c) => asSetlistSong(c.to)), ...favourites, ...setlistItems]) {
+      const k = songKey(f.title, f.artist);
       if (seen.has(k)) continue;
       seen.add(k);
       pool.push(f);
     }
+    const timesOf = (s: Suggestion) => times.get(songKey(s.item.title, s.item.artist)) ?? 0;
     const ranked = pool
       .map(withTransition)
-      .filter((x): x is { item: SetlistItem; t: Transition } => !!x)
-      .sort((a, b) => rankOf(a.t) - rankOf(b.t))
+      .filter((x): x is Suggestion => !!x)
+      .map((s) => ({ ...s, times: timesOf(s) }))
+      .sort((a, b) => b.times - a.times || rankOf(a.t) - rankOf(b.t))
       .slice(0, 6);
     shownTitles.current = ranked.map((r) => r.item.title);
     setSuggestErr(null);
@@ -296,7 +310,7 @@ export function Player() {
       if (!res.ok) throw new Error(data.error ?? "couldn’t get more ideas");
       const next = (data.items as Omit<SetlistItem, "uid">[])
         .map(withTransition)
-        .filter((x): x is { item: SetlistItem; t: Transition } => !!x)
+        .filter((x): x is Suggestion => !!x)
         .sort((a, b) => rankOf(a.t) - rankOf(b.t));
       shownTitles.current = [...shownTitles.current, ...next.map((r) => r.item.title)].slice(-60);
       setSuggestions(next);
@@ -591,7 +605,7 @@ function SuggestionList({
   onAdd,
   inSetlist,
 }: {
-  suggestions: { item: SetlistItem; t: Transition }[];
+  suggestions: Suggestion[];
   busy: boolean;
   error: string | null;
   onMore: () => void;
@@ -613,13 +627,14 @@ function SuggestionList({
         </p>
       ) : (
         <ul className="mt-2 divide-y divide-border/60">
-          {suggestions.map(({ item, t }) => (
+          {suggestions.map(({ item, t, times }) => (
             <li key={item.uid} className="flex items-center gap-3 py-2">
               <div className="min-w-0 flex-1">
                 <div className="truncate font-medium">
                   {item.title} <span className="text-text-dim">— {item.artist}</span>
                 </div>
                 <div className="truncate text-xs text-text-faint">
+                  {times ? <span className="text-accent-2">you’ve played this next {times === 1 ? "before" : `${times}×`} · </span> : null}
                   {t.toKey} · {t.relationship} · play {t.chords.slice(0, -1).join(" → ")} into {t.chords[t.chords.length - 1]}
                 </div>
               </div>

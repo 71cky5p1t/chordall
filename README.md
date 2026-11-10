@@ -76,6 +76,13 @@ Working MVP:
   page, and a History page sorted by recent or most played, with + setlist,
   remove and clear (with undo). Versions of a song count as one; reopening
   within 30 minutes is the same listen.
+- **Moods & sessions** — History sorts the songs you've played into moods
+  (Claude picks from a fixed list, so they group), splits your listening into
+  sessions (a gap of 45 minutes starts a new one), and lists songs you keep
+  playing back to back. Any of them can become the setlist or be saved for
+  later, and Suggest next puts the songs you usually play next first.
+- **Past setlists** — every set you perform, clear or swap out is kept on the
+  Setlist page, plus any you save by name; load, rename or delete them.
 - **Capo charts** — in piano mode a capo chart is shown in the song's original
   key (a Capo 2 chart of G shapes reads in A), and saved keys and transitions
   follow. Guitar mode keeps the shapes, labelled with what they sound like.
