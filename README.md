@@ -71,6 +71,11 @@ Working MVP:
   extending under the notch (`viewport-fit=cover`) with safe-area padding on the
   top bars and bottom dock. Icons are in `public/` (rendered from
   `public/icon.svg`).
+- **History** — every song you open (in the player or a set) and every search
+  that found something, on this device: recent searches and songs on the home
+  page, and a History page sorted by recent or most played, with + setlist,
+  remove and clear (with undo). Versions of a song count as one; reopening
+  within 30 minutes is the same listen.
 - **Capo charts** — in piano mode a capo chart is shown in the song's original
   key (a Capo 2 chart of G shapes reads in A), and saved keys and transitions
   follow. Guitar mode keeps the shapes, labelled with what they sound like.

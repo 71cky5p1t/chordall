@@ -33,6 +33,7 @@ import {
   SPEED_MIN,
 } from "@/components/SettingsProvider";
 import { useFavourites } from "@/components/FavouritesProvider";
+import { useHistory } from "@/components/HistoryProvider";
 import type { SetlistItem } from "@/lib/setlist-types";
 
 interface SongResponse {
@@ -97,6 +98,7 @@ export function Player() {
   const { settings, update } = useSettings();
   const { add, has, items: setlistItems } = useSetlist();
   const { toggle: toggleFav, isFavourite, favourites } = useFavourites();
+  const { notePlayed } = useHistory();
   const router = useRouter();
 
   const [data, setData] = useState<SongResponse | null>(null);
@@ -201,6 +203,12 @@ export function Player() {
     sourceKey: meta?.key,
     capo: meta?.capo ?? 0,
   });
+
+  // Each song that loads goes in the history (versions count as one song).
+  useEffect(() => {
+    if (data) notePlayed(buildItem());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
 
   const onAdd = () => data && add(buildItem());
   const onFav = () => data && toggleFav(buildItem());

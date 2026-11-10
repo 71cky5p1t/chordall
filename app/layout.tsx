@@ -4,6 +4,7 @@ import "./globals.css";
 import { SetlistProvider } from "@/components/SetlistProvider";
 import { SettingsProvider } from "@/components/SettingsProvider";
 import { FavouritesProvider } from "@/components/FavouritesProvider";
+import { HistoryProvider } from "@/components/HistoryProvider";
 import { SiteHeader } from "@/components/SiteHeader";
 
 const geistSans = Geist({
@@ -59,8 +60,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <SettingsProvider>
           <FavouritesProvider>
             <SetlistProvider>
-              <SiteHeader />
-              <div className="flex-1">{children}</div>
+              <HistoryProvider>
+                <SiteHeader />
+                <div className="flex-1">{children}</div>
+              </HistoryProvider>
             </SetlistProvider>
           </FavouritesProvider>
         </SettingsProvider>

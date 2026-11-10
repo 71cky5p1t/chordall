@@ -20,6 +20,7 @@ import { ScrollDock } from "@/components/ScrollDock";
 import { Rocker } from "@/components/Rocker";
 import { animateScrollBy } from "@/lib/scroll";
 import { useSetlist } from "@/components/SetlistProvider";
+import { useHistory } from "@/components/HistoryProvider";
 import {
   useSettings,
   clamp,
@@ -42,6 +43,7 @@ const POSITION_KEY = "chordall.perform.position";
 export default function PerformPage() {
   const { items, ready } = useSetlist();
   const { settings, update } = useSettings();
+  const { notePlayed } = useHistory();
 
   const [idx, setIdx] = useState(0);
   const [data, setData] = useState<SongResponse | null>(null);
@@ -108,6 +110,15 @@ export default function PerformPage() {
       });
     return () => ctrl.abort();
   }, [current, reloads]);
+
+  // Songs played in a set count as listens too.
+  useEffect(() => {
+    if (!data || !current) return;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { uid, ...song } = current;
+    notePlayed({ ...song, chords: data.parsed.chords, detectedKey: data.detectedKey, capo: data.meta.capo ?? 0 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
 
   // Apply the default transpose once per song (after settings have hydrated).
   useEffect(() => {

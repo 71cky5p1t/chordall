@@ -6,6 +6,7 @@ import type { SearchResult } from "@/lib/providers/types";
 import { groupSongs } from "@/lib/providers/group";
 import { FAVOURITE_ARTISTS, JYE_ARTISTS } from "@/lib/artists";
 import { useSettings } from "@/components/SettingsProvider";
+import { useHistory, ago } from "@/components/HistoryProvider";
 
 // Song links set prefetch={false}: a list on screen shouldn't scrape every song
 // in it, and prefetched pages' titles can land on whichever song you open.
@@ -76,6 +77,15 @@ export default function Home() {
       /* ignore */
     }
     setHydrated(true);
+    // A search linked from History: run it, then drop it from the address so
+    // Back or a reload doesn't search all over again.
+    const linked = new URLSearchParams(window.location.search).get("q");
+    if (linked) {
+      window.history.replaceState(window.history.state, "", "/");
+      setQ(linked);
+      runSearch(linked);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
     if (!hydrated) return;
@@ -136,6 +146,8 @@ export default function Home() {
   const songs = useMemo(() => groupSongs(results ?? []), [results]);
 
   const { settings, update } = useSettings();
+  const history = useHistory();
+  const { noteSearch } = history;
   const isJye = settings.instrument === "guitar";
   const artistList = isJye ? JYE_ARTISTS : FAVOURITE_ARTISTS;
 
@@ -154,12 +166,16 @@ export default function Home() {
       if (!res.ok) throw new Error(data.error ?? "search failed");
       setResults(data.results);
       setErrors(data.errors ?? []);
+      // Only searches that found something are worth coming back to.
+      if (data.results?.length) noteSearch(query);
     } catch (e) {
       if (ctrl.signal.aborted) return;
       setErr(String(e instanceof Error ? e.message : e));
     } finally {
       if (inFlight.current === ctrl) setLoading(false);
     }
+    // noteSearch only uses a state updater, so the first one is as good as any.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const onSearch = (e: FormEvent) => {
@@ -265,6 +281,50 @@ export default function Home() {
       {/* Browse */}
       {showBrowse && (
         <div className="mx-auto mt-10 max-w-2xl space-y-6">
+          {history.ready && (history.searches.length > 0 || history.songs.length > 0) && (
+            <section>
+              <div className="mb-2 flex items-baseline justify-between">
+                <h2 className="text-sm font-semibold text-text-dim">Recent</h2>
+                <Link href="/history" className="text-xs text-text-faint underline hover:text-text">
+                  All history →
+                </Link>
+              </div>
+              {history.searches.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {history.searches.slice(0, 8).map((s) => (
+                    <button
+                      key={s.q}
+                      onClick={() => onArtist(s.q)}
+                      className="max-w-full truncate rounded-full border border-border bg-bg-elev px-3 py-1.5 text-sm text-text-dim transition hover:border-accent hover:text-accent"
+                    >
+                      <span aria-hidden className="text-text-faint">⌕ </span>
+                      {s.q}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {history.songs.length > 0 && (
+                <ul className="mt-3 divide-y divide-border overflow-hidden rounded-xl border border-border">
+                  {history.songs.slice(0, 4).map((s) => (
+                    <li key={s.key} className="bg-bg-elev">
+                      <Link
+                        href={songHref({ ...s, id: s.songId })}
+                        prefetch={false}
+                        className="flex items-baseline gap-3 px-4 py-2.5 transition hover:bg-bg-elev-2"
+                      >
+                        <span className="min-w-0 flex-1 truncate">
+                          <span className="font-medium">{s.title}</span>
+                          <span className="text-sm text-text-dim"> — {s.artist}</span>
+                        </span>
+                        <span className="shrink-0 text-xs text-text-faint">{ago(s.lastAt)}</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          )}
+
           <section>
             <h2 className="mb-2 text-sm font-semibold text-text-dim">
               {isJye ? "Jye’s artists" : "Juncle’s artists"}

@@ -25,12 +25,17 @@ function norm(s: string): string {
   return key || s.trim().toLowerCase();
 }
 
+/** One key per song, whichever transcription of it. */
+export function songKey(title: string, artist: string): string {
+  return `${norm(title)}|${norm(artist)}`;
+}
+
 export function groupSongs<T extends { title: string; artist: string }>(
   rows: T[],
 ): SongGroup<T>[] {
   const groups = new Map<string, SongGroup<T>>();
   for (const row of rows) {
-    const key = `${norm(row.title)}|${norm(row.artist)}`;
+    const key = songKey(row.title, row.artist);
     const group = groups.get(key);
     if (group) group.versions.push(row);
     else groups.set(key, { key, best: row, versions: [row] });
